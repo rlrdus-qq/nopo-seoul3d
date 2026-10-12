@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>노포 바이블 · 서울 종이 모형</title>
+<meta name="description" content="서울 25개 구를 종이 모형처럼 그린 3D 지도. 노포를 드론처럼 찾아갑니다.">
+<style>
+:root{--ink:#1d1a16;--red:#d7232f;--brass:#c9a35a}
+html,body{margin:0;height:100%;background:#cfe6f5;font-family:"Noto Sans KR",system-ui,sans-serif;color:var(--ink);overflow:hidden}
+#c{position:fixed;inset:0;display:block}
+.ui{position:fixed;z-index:3;pointer-events:none}
+.ui>*{pointer-events:auto}
+#top{left:12px;top:12px;display:flex;flex-direction:column;gap:8px;max-width:min(340px,calc(100vw - 24px))}
+.card{background:rgba(255,253,247,.93);border:1px solid rgba(0,0,0,.12);border-radius:12px;padding:10px 12px;box-shadow:0 4px 18px rgba(0,0,0,.12);backdrop-filter:blur(6px)}
+h1{margin:0;font-size:21px;letter-spacing:-.5px;display:flex;align-items:baseline;gap:8px}
+h1 small{font-size:12px;font-weight:400;color:#666}
+.sub{margin:3px 0 0;font-size:12px;color:#555}
+.row{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+button,a.btn{border:1px solid rgba(0,0,0,.2);background:#fff;border-radius:999px;padding:6px 11px;font-size:13px;cursor:pointer;color:var(--ink);text-decoration:none;line-height:1.2}
+button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+button.red{background:var(--red);color:#fff;border-color:var(--red)}
+button[hidden],a[hidden]{display:none}
+.list{max-height:30vh;overflow:auto;margin:8px -4px 0;padding:0 4px}
+.list .li{display:flex;gap:4px;margin:3px 0}
+.list .li button{flex:1;text-align:left;border-radius:8px;padding:5px 10px;background:rgba(255,255,255,.7)}
+.list .li button[data-a="fly"]{flex:0 0 auto;padding:5px 9px;background:#fff}
+.list .li button[data-a="fly"]:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.list button small{color:#777;margin-left:6px}
+.list:empty{display:none}
+#stat{left:12px;bottom:12px;font:600 12px/1.6 ui-monospace,Consolas,monospace;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);background:rgba(0,0,0,.35);padding:5px 10px;border-radius:8px}
+#nav{right:12px;bottom:12px;display:grid;grid-template-columns:repeat(3,34px);gap:4px}
+#nav button{width:34px;height:34px;border-radius:8px;font-size:15px;padding:0;background:rgba(255,253,247,.9)}
+#load{position:fixed;inset:0;z-index:9;display:grid;place-items:center;background:#cfe6f5;font-size:14px;color:#345}
+#load b{display:block;font-size:26px;margin-bottom:6px}
+#load[hidden]{display:none}
+#foot{right:12px;top:12px;font-size:11px;color:rgba(0,0,0,.55);text-align:right;max-width:280px;line-height:1.4}
+#tip{position:fixed;left:50%;bottom:52px;transform:translateX(-50%);z-index:3;background:rgba(18,15,11,.8);color:#fff;font-size:13px;padding:7px 14px;border-radius:999px;pointer-events:none;transition:opacity .4s}
+#tip.off{opacity:0}
+@media (max-width:640px){#foot{display:none}.list{max-height:22vh}h1{font-size:18px}}
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="load"><div><b>서울을 접는 중…</b><span id="load-t">지형과 바닥을 불러옵니다</span></div></div>
+<div class="ui" id="top">
+  <div class="card">
+    <h1><span id="where">서울</span><small>종이 모형</small></h1>
+    <p class="sub" id="count"></p>
+    <div class="row">
+      <button id="exit" hidden>← 전국 지도로</button>
+      <button id="back" hidden>← 서울 전체로</button>
+      <button id="tour" class="red" hidden>🚁 둘러보기</button>
+      <button id="edges" aria-pressed="true">윤곽선</button>
+      <span style="display:inline-flex;gap:4px"><button data-m="day" aria-pressed="true">낮</button><button data-m="dusk">노을</button><button data-m="night">밤</button></span>
+      <a class="btn" id="tomap" href="https://gaja.semicolon.works/nopo/">← 지도로</a>
+    </div>
+    <div class="list" id="list"></div>
+  </div>
+</div>
+<div class="ui" id="foot">건물 윤곽·층수·용도: 국가공간정보포털 GIS건물통합정보 · 바닥: 국토교통부 브이월드 위성 · 지형: AWS Terrain Tiles · 도로·물·숲·시설: © OpenStreetMap 기여자(OpenFreeMap) · 건물 색은 위성에서 추정, 외형은 단순화한 모형</div>
+<div class="ui" id="stat"></div>
+<div class="ui" id="nav">
+  <button data-a="rl" title="왼쪽으로 돌기">↶</button><button data-a="up" title="앞으로">↑</button><button data-a="rr" title="오른쪽으로 돌기">↷</button>
+  <button data-a="left" title="왼쪽으로">←</button><button data-a="down" title="뒤로">↓</button><button data-a="right" title="오른쪽으로">→</button>
+  <button data-a="in" title="가까이">＋</button><button data-a="tilt" title="기울이기">⤢</button><button data-a="out" title="멀리">－</button>
+</div>
+<div id="tip">구 동그라미를 누르면 그 구로 내려갑니다 · 끌어서 돌리고, 휠로 당기고, 오른쪽 끌기로 이동</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as BGU from 'three/addons/utils/BufferGeometryUtils.js';
+
+// ---------- 빠른 돌출: 발자국(평면 x·y) 여러 개를 한 번에 벽·지붕·윤곽선 버퍼로. Shape/ExtrudeGeometry 보다 10배쯤 빠르다
+// items: [{co:[x,y,...], base, H, wall:Color, roof:Color, info:[u,H,base]}] → {geo, edges}
+const _v2 = [];
+function extrudeMany(items, withAttrs){
+  let nv = 0, ne = 0;
+  for(const it of items){ const n = it.co.length / 2; nv += 9 * n - 6; ne += 4 * n; }
+  const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = withAttrs ? new Float32Array(nv * 3) : null, roof = withAttrs ? new Float32Array(nv * 3) : null, inf = withAttrs ? new Float32Array(nv * 3) : null;
+  const ed = new Float32Array(ne * 3); let v = 0, e = 0;
+  const put = (x, y, z, nx, ny, nz, it) => { pos[v * 3] = x; pos[v * 3 + 1] = y; pos[v * 3 + 2] = z; nor[v * 3] = nx; nor[v * 3 + 1] = ny; nor[v * 3 + 2] = nz;
+    if(withAttrs){ col[v * 3] = it.wall.r; col[v * 3 + 1] = it.wall.g; col[v * 3 + 2] = it.wall.b; roof[v * 3] = it.roof.r; roof[v * 3 + 1] = it.roof.g; roof[v * 3 + 2] = it.roof.b; inf[v * 3] = it.info[0]; inf[v * 3 + 1] = it.info[1]; inf[v * 3 + 2] = it.info[2]; } v++; };
+  for(const it of items){
+    const co = it.co, n = co.length / 2, b = it.base, t = it.base + it.H;
+    // 반시계(x 동·y 북 기준)로 맞춘다
+    let area = 0; for(let i = 0; i < n; i++){ const j = (i + 1) % n; area += co[i * 2] * co[j * 2 + 1] - co[j * 2] * co[i * 2 + 1]; }
+    const ccw = area > 0, idx = k => ccw ? k : n - 1 - k;
+    for(let k = 0; k < n; k++){ const i = idx(k), j = idx((k + 1) % n), x0 = co[i * 2], y0 = co[i * 2 + 1], x1 = co[j * 2], y1 = co[j * 2 + 1];
+      const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 1, nx = dy / L, nz = dx / L;   // 바깥 법선(월드: X=x, Z=-y)
+      // 삼각형 두 장: (p바닥, q바닥, q꼭대기) (p바닥, q꼭대기, p꼭대기) — 바깥에서 봐서 반시계
+      put(x0, b, -y0, nx, 0, nz, it); put(x1, b, -y1, nx, 0, nz, it); put(x1, t, -y1, nx, 0, nz, it);
+      put(x0, b, -y0, nx, 0, nz, it); put(x1, t, -y1, nx, 0, nz, it); put(x0, t, -y0, nx, 0, nz, it);
+      ed[e * 3] = x0; ed[e * 3 + 1] = b; ed[e * 3 + 2] = -y0; e++; ed[e * 3] = x0; ed[e * 3 + 1] = t; ed[e * 3 + 2] = -y0; e++;        // 세로 모서리
+      ed[e * 3] = x0; ed[e * 3 + 1] = t; ed[e * 3 + 2] = -y0; e++; ed[e * 3] = x1; ed[e * 3 + 1] = t; ed[e * 3 + 2] = -y1; e++;        // 지붕 테두리
+    }
+    _v2.length = 0; for(let k = 0; k < n; k++){ const i = idx(k); _v2.push(new THREE.Vector2(co[i * 2], co[i * 2 + 1])); }
+    let tris; try { tris = THREE.ShapeUtils.triangulateShape(_v2, []); } catch(err){ tris = []; }
+    for(const tr of tris){ const [a, bb, c] = tr;   // 지붕: (x,y) 반시계 삼각형은 월드(X, t, -y)에서도 위를 향한다 — 순서 그대로
+      put(_v2[a].x, t, -_v2[a].y, 0, 1, 0, it); put(_v2[bb].x, t, -_v2[bb].y, 0, 1, 0, it); put(_v2[c].x, t, -_v2[c].y, 0, 1, 0, it); }
+    for(let k = tris.length * 3; k < 3 * (n - 2); k++) put(co[0], t, -co[1], 0, 1, 0, it);   // 삼각분할이 짧으면 빈 삼각형으로 채운다
+  }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos.subarray(0, v * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor.subarray(0, v * 3), 3));
+  if(withAttrs){ geo.setAttribute('color', new THREE.BufferAttribute(col.subarray(0, v * 3), 3)); geo.setAttribute('aRoof', new THREE.BufferAttribute(roof.subarray(0, v * 3), 3)); geo.setAttribute('aInfo', new THREE.BufferAttribute(inf.subarray(0, v * 3), 3)); }
+  const edges = new THREE.BufferGeometry(); edges.setAttribute('position', new THREE.BufferAttribute(ed.subarray(0, e * 3), 3));
+  return {geo, edges};
+}
+
+
+const $ = s => document.querySelector(s);
+const ASSET_BASE = '';   // 3D 자료(타일·바닥·지형) 주소 앞머리. 빌드가 site.json seoul3d_assets 로 채움(GitHub Pages 등), 비면 같은 폴더
+const A = p => ASSET_BASE + p;
+const EMBED = window.parent !== window;
+const post = m => { if(EMBED) window.parent.postMessage(Object.assign({src:'seoul3d'}, m), '*'); };
+if(EMBED){ $('#tomap').hidden = true; $('#exit').hidden = false; }
+$('#exit').onclick = () => post({t:'exit'});
+gsap.ticker.lagSmoothing(0);
+
+// ---------- 자료
+const loadDem = () => new Promise((ok, no) => { const im = new Image(); im.onload = () => { const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height;
+  const g = cv.getContext('2d'); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, im.width, im.height).data, out = new Uint16Array(im.width * im.height);
+  for(let i = 0; i < out.length; i++) out[i] = d[i * 4] * 256 + d[i * 4 + 1]; ok(out); }; im.onerror = no; im.crossOrigin = 'anonymous'; im.src = A('dem.png'); });
+let got = 0; const prog = (label, n) => { got += n; $('#load-t').textContent = `${label} · ${(got / 1048576).toFixed(1)}MB 받음`; };
+const getJ = async (u, label) => { const r = await fetch(u); const t = await r.text(); prog(label, t.length); return JSON.parse(t); };
+const [META, PLACES_ALL, DEM] = await Promise.all([getJ(A('meta.json'), '지도 정보'), getJ(A('places.json'), '노포 자리'), loadDem().then(d => { prog('지형', d.length * 2); return d; })]);
+const lateWater = getJ(A('water.json'), '강·하천'), lateBlocks = getJ(A('blocks.json'), '도시 덩어리');
+const [x0, y0, x1, y1] = META.bbox, BW = x1 - x0, BH = y1 - y0;
+const DW = META.dem.w, DH = META.dem.h, DS = META.dem.step;
+// 지형: 80m 격자(40m 격자의 절반)를 바닥 그물과 건물 밑바닥이 함께 쓴다 → 서로 어긋나지 않는다
+const G2W = Math.floor((DW - 1) / 2) + 1, G2H = Math.floor((DH - 1) / 2) + 1, G2S = DS * 2, G2 = new Float32Array(G2W * G2H);
+for(let j = 0; j < G2H; j++) for(let i = 0; i < G2W; i++) G2[j * G2W + i] = DEM[(j * 2) * DW + i * 2] / 10;
+function hAt(x, y){
+  const u = (x - x0) / G2S, v = (y1 - y) / G2S;
+  const i = Math.max(0, Math.min(G2W - 2, Math.floor(u))), j = Math.max(0, Math.min(G2H - 2, Math.floor(v)));
+  const fu = Math.min(1, Math.max(0, u - i)), fv = Math.min(1, Math.max(0, v - j)), g = (a, b) => G2[b * G2W + a];
+  return (g(i, j) * (1 - fu) + g(i + 1, j) * fu) * (1 - fv) + (g(i, j + 1) * (1 - fu) + g(i + 1, j + 1) * fu) * fv;
+}
+const [TX0, TY0, TX1, TY1] = META.z14;
+const TILE_M = 2 * Math.PI * 6378137 * META.s / Math.pow(2, 14);   // z14 타일 한 변(로컬 m)
+function tileOf(x, y){   // 로컬 m → z14 타일 번호
+  const R = 6378137, X = x / META.s + R * META.center[0] * Math.PI / 180, Y = y / META.s + R * Math.log(Math.tan(Math.PI / 4 + META.center[1] * Math.PI / 360));
+  const n = 16384; return [Math.floor((X + Math.PI * R) / (2 * Math.PI * R) * n), Math.floor((Math.PI * R - Y) / (2 * Math.PI * R) * n)];
+}
+function tileCenter(tx, ty){ const R = 6378137, n = 16384;
+  const X = (tx + .5) / n * 2 * Math.PI * R - Math.PI * R, Y = Math.PI * R - (ty + .5) / n * 2 * Math.PI * R;
+  return [(X - R * META.center[0] * Math.PI / 180) * META.s, (Y - R * Math.log(Math.tan(Math.PI / 4 + META.center[1] * Math.PI / 360))) * META.s]; }
+function inRing(x, y, r){ let ins = false; for(let i = 0, j = r.length - 2; i < r.length; j = i, i += 2){ const xi = r[i], yi = r[i + 1], xj = r[j], yj = r[j + 1];
+  if((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) ins = !ins; } return ins; }
+const guOf = (x, y) => META.gu.find(g => inRing(x, y, g.ring))?.k || null;
+
+// ---------- 렌더러·장면
+const canvas = $('#c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, 1, 2, 90000);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = .08; controls.maxPolarAngle = Math.PI * .47; controls.minDistance = 60; controls.maxDistance = 26000;
+controls.mouseButtons = {LEFT:THREE.MOUSE.ROTATE, MIDDLE:THREE.MOUSE.DOLLY, RIGHT:THREE.MOUSE.PAN};
+const sky = new THREE.Mesh(new THREE.SphereGeometry(60000, 24, 12), new THREE.ShaderMaterial({side:THREE.BackSide, depthWrite:false,
+  uniforms:{top:{value:new THREE.Color('#79aee0')}, bottom:{value:new THREE.Color('#e9f1f7')}},
+  vertexShader:'varying vec3 p; void main(){ p = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader:'uniform vec3 top,bottom; varying vec3 p; void main(){ float t = clamp(p.y/20000.0, 0.0, 1.0); gl_FragColor = vec4(mix(bottom, top, pow(t,.6)), 1.0); }'}));
+scene.add(sky);
+scene.fog = new THREE.Fog('#dfe9f0', 6000, 40000);
+const hemi = new THREE.HemisphereLight('#dff0ff', '#9a9686', 1.15); scene.add(hemi);
+const sun = new THREE.DirectionalLight('#fff4e0', 2.0); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, {left:-2600, right:2600, top:2000, bottom:-2000, near:100, far:12000}); sun.shadow.bias = -.0006; sun.shadow.normalBias = 2;
+scene.add(sun, sun.target);
+
+// ---------- 바닥(지형) : 80m 그물 + 위성 바닥(가까이선 종이색)
+$('#load-t').textContent = '지형을 세우는 중';
+const groundTex = new THREE.TextureLoader().setCrossOrigin('anonymous').load(A('ground.jpg'), () => { groundMat.map = groundTex; groundMat.needsUpdate = true; }); groundTex.colorSpace = THREE.SRGBColorSpace; groundTex.anisotropy = 8;
+const gGeo = new THREE.PlaneGeometry(BW, BH, G2W - 1, G2H - 1);
+{ const p = gGeo.attributes.position; for(let i = 0; i < p.count; i++) p.setZ(i, hAt(p.getX(i) + (x0 + x1) / 2, p.getY(i) + (y0 + y1) / 2)); gGeo.computeVertexNormals(); }
+gGeo.rotateX(-Math.PI / 2);
+const groundMat = new THREE.MeshLambertMaterial({color:'#e9e4d6'});   // 위성 그림이 오기 전엔 종이색
+const paperUni = {uPaper:{value:new THREE.Color('#e9e4d6').convertSRGBToLinear()}, uCam:{value:new THREE.Vector3()}, uNear:{value:350}, uFar:{value:1600}};
+groundMat.onBeforeCompile = sh => { Object.assign(sh.uniforms, paperUni);
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWp;').replace('#include <fog_vertex>', '#include <fog_vertex>\nvWp = (modelMatrix * vec4(position,1.0)).xyz;');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uPaper, uCam; uniform float uNear, uFar; varying vec3 vWp;')
+    .replace('#include <map_fragment>', '#include <map_fragment>\n float dd = distance(vWp, uCam); float t = smoothstep(uNear, uFar, dd); vec3 sat = diffuseColor.rgb; float lum = dot(sat, vec3(0.3,0.59,0.11)); vec3 paperish = mix(uPaper * (0.75 + lum * 0.5), sat, 0.35); diffuseColor.rgb = mix(paperish, sat, t);'); };
+const ground = new THREE.Mesh(gGeo, groundMat); ground.position.set((x0 + x1) / 2, 0, -(y0 + y1) / 2); ground.receiveShadow = true; scene.add(ground);
+
+// ---------- 물(한강·지천) : 잔물결 셰이더 — 자료가 오면 붙인다
+const waterUni = {uTime:{value:0}, uCamW:{value:new THREE.Vector3()}, uCol:{value:new THREE.Color('#5fc4da').convertSRGBToLinear()}, uDeep:{value:new THREE.Color('#3a9bb7').convertSRGBToLinear()}};
+lateWater.then(WATER => { const parts = [];
+  for(const w of WATER){ const sh = new THREE.Shape(); for(let i = 0; i < w.length; i += 2) i ? sh.lineTo(w[i], w[i + 1]) : sh.moveTo(w[i], w[i + 1]);
+    let g; try { g = new THREE.ShapeGeometry(sh); } catch(e){ continue; }
+    g.rotateX(-Math.PI / 2); const p = g.attributes.position; for(let i = 0; i < p.count; i++) p.setY(i, hAt(p.getX(i), -p.getZ(i)) + 1.2); parts.push(g); }
+  const wm = new THREE.MeshLambertMaterial({color:'#ffffff'});
+  wm.onBeforeCompile = sh => { Object.assign(sh.uniforms, waterUni);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWw;').replace('#include <fog_vertex>', '#include <fog_vertex>\nvWw = (modelMatrix * vec4(position,1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uTime; uniform vec3 uCol, uDeep, uCamW; varying vec3 vWw;')
+      .replace('#include <color_fragment>', '#include <color_fragment>\n float w1 = sin(vWw.x * 0.09 + uTime * 1.3) * sin(vWw.z * 0.07 - uTime * 0.9); float w2 = sin((vWw.x + vWw.z) * 0.021 + uTime * 0.6); float near = 1.0 - smoothstep(600.0, 2600.0, distance(vWw, uCamW)); float rip = 0.5 + 0.5 * (w1 * 0.6 + w2 * 0.4) * near; diffuseColor.rgb = mix(uDeep, uCol, 0.35 + 0.65 * rip) * (0.95 + 0.14 * step(0.93, rip) * near);'); };
+  if(parts.length){ const water = new THREE.Mesh(BGU.mergeGeometries(parts, false), wm); water.receiveShadow = true; scene.add(water); } });
+
+const tiles = {};   // key → {group, bld:[{x,y,h,base}], labels:[sprite], at} (덩어리 콜백이 먼저 볼 수 있어 여기서 선언)
+// ---------- 멀리서 보는 덩어리(블록): 타일마다 한 덩어리, 그 타일의 상세가 오면 숨긴다 — 자료가 오면 붙인다
+const PAPER = new THREE.Color('#e4dfd2').convertSRGBToLinear();
+const blockMeshes = {}; let blocksReady = false;
+lateBlocks.then(async BLOCKS => { const mat = new THREE.MeshLambertMaterial({color:PAPER}); let k = 0;
+  for(const [key, polys] of Object.entries(BLOCKS)){ if(++k % 60 === 0) await new Promise(r => setTimeout(r, 0));
+    if(tiles[key] && tiles[key].state === 'ok') continue;
+    const items = []; for(const co of polys){ if(co.length < 6) continue; let cx = 0, cy = 0; for(let i = 0; i < co.length; i += 2){ cx += co[i]; cy += co[i + 1]; } cx /= co.length / 2; cy /= co.length / 2; items.push({co, base:hAt(cx, cy) - 2, H:16}); }
+    if(!items.length) continue; const {geo} = extrudeMany(items, false); const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; scene.add(m); blockMeshes[key] = m; }
+  window.__seoul && (window.__seoul.blocksReady = true); blocksReady = true; });
+
+// ---------- 구 경계선 · 구 동그라미 · 랜드마크 · 지하철
+const guLines = new THREE.Group(); scene.add(guLines);
+for(const g of META.gu){ const pts = []; for(let i = 0; i < g.ring.length; i += 2) pts.push(new THREE.Vector3(g.ring[i], hAt(g.ring[i], g.ring[i + 1]) + 6, -g.ring[i + 1]));
+  pts.push(pts[0].clone()); guLines.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:'#8f6f36', transparent:true, opacity:.7}))); }
+function textSprite(draw, w, h){ const cv = document.createElement('canvas'); cv.width = w; cv.height = h; draw(cv.getContext('2d')); const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.Sprite(new THREE.SpriteMaterial({map:t, transparent:true, depthTest:true})); }
+const rounded = (g, x, y, w, h, r, fill, stroke) => { g.beginPath(); g.roundRect(x, y, w, h, r); g.fillStyle = fill; g.fill(); if(stroke){ g.strokeStyle = stroke; g.lineWidth = 3; g.stroke(); } };
+const bubbles = [];
+function makeBubbles(){
+  for(const b of bubbles) scene.remove(b); bubbles.length = 0;
+  for(const g of META.gu){ const n = PLACES.filter(p => p.gu === g.k).length; if(!n) continue;
+    const sp = textSprite(ctx => { ctx.beginPath(); ctx.arc(128, 100, 78, 0, 7); ctx.fillStyle = '#d7232f'; ctx.fill(); ctx.lineWidth = 8; ctx.strokeStyle = '#fff'; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = '700 72px "Noto Sans KR",sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n, 128, 100);
+      rounded(ctx, 28, 192, 200, 56, 28, 'rgba(255,255,255,.95)', 'rgba(0,0,0,.3)'); ctx.fillStyle = '#1a1a1a'; ctx.font = '700 36px "Noto Sans KR",sans-serif'; ctx.fillText(g.k, 128, 221); }, 256, 256);
+    sp.material.depthTest = false; sp.renderOrder = 6; sp.position.set(g.c[0], hAt(g.c[0], g.c[1]) + 420, -g.c[1]); sp.userData = {gu:g.k, big:n >= 20}; scene.add(sp); bubbles.push(sp); } }
+const marks = [];
+for(const [nm, x, y] of META.landmarks){ const sp = textSprite(ctx => { ctx.font = '700 40px "Noto Sans KR",sans-serif'; const w = Math.min(500, ctx.measureText(nm).width + 60);
+    rounded(ctx, 256 - w / 2, 70, w, 64, 32, 'rgba(255,248,225,.95)', '#c9a35a'); ctx.fillStyle = '#5a3f12'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('★ ' + nm, 256, 102);
+    ctx.strokeStyle = '#c9a35a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(256, 134); ctx.lineTo(256, 250); ctx.stroke(); }, 512, 256);
+  sp.position.set(x, hAt(x, y) + 120, -y); sp.userData = {kind:'lm'}; scene.add(sp); marks.push(sp); }
+for(const [nm, x, y] of META.subway){ const sp = textSprite(ctx => { ctx.beginPath(); ctx.arc(128, 60, 34, 0, 7); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 12; ctx.strokeStyle = '#1f6f8b'; ctx.stroke();
+    ctx.font = '700 36px "Noto Sans KR",sans-serif'; const w = Math.min(248, ctx.measureText(nm).width + 30); rounded(ctx, 128 - w / 2, 108, w, 54, 27, 'rgba(255,255,255,.95)', 'rgba(0,0,0,.25)');
+    ctx.fillStyle = '#1f6f8b'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(nm, 128, 135); }, 256, 256);
+  sp.position.set(x, hAt(x, y) + 30, -y); sp.userData = {kind:'sub'}; scene.add(sp); marks.push(sp); }
+
+// ---------- 상세 타일 스트리밍: 건물(용도 창문 셰이더)·도로·나무·도로명·공공 표기
+// 지붕: 위성 계열(옥상 녹색 방수·회색 콘크리트·갈색 기와가 그대로) · 벽: 구조(m) × 연식(y) × 용도(u) 로 고른 한국 외장 색
+const ROOF = ['#e9e5dd','#cfccc6','#9c9995','#dccdb0','#a98a6c','#b06a5c','#8ea7ba','#8fa78b'].map(c => new THREE.Color(c).convertSRGBToLinear());
+const WALLS = {   // 재질별 후보(해시로 하나 고름). 연식이 오래될수록 어둡게
+  0:['#c9a386','#cf9484','#ecdfc6','#c9a386'],            // 벽돌: 적벽돌·황벽돌(시안 팔레트)
+  1:['#f5f2ec','#e2dfd8','#ecdfc6','#efe9df','#d9d6c8'],  // 철근콘크리트: 크림·연회색·베이지
+  2:['#f0ebe0','#e2dfd8','#d9d6c8'],                      // 목·블록 옛집: 회벽
+  3:['#d9dde2','#aebfcd','#cfd6dc'],                      // 철골: 패널·유리
+  4:['#e6e2d8','#d9d6c8']};
+const hashS = s => { let h = 2166136261; for(const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return (h >>> 0) / 4294967295; };
+function wallColor(u, m, y, cx, cy){ const list = WALLS[m] || WALLS[4]; let hex = list[Math.floor(hashS(cx + ',' + cy) * list.length)];
+  if(u === 1) hex = ['#f3efe6','#efe9df','#e8ece6','#ece7ee'][Math.floor(hashS(cy + ',' + cx) * 4)];   // 아파트는 밝은 크림·연녹·연보라 계열
+  if(u === 3) hex = '#d6dbe0'; if(u === 5) hex = '#e4d8c6';
+  const c = new THREE.Color(hex); const dark = [0.9, 0.95, 1.0, 1.03][y] ?? 1; c.multiplyScalar(dark); return c.convertSRGBToLinear(); }
+const bldUni = {uNight:{value:0}, uWin:{value:new THREE.Color('#4d5d72').convertSRGBToLinear()}, uGlow:{value:new THREE.Color('#ffe08a').convertSRGBToLinear()}};
+const bldMat = new THREE.MeshLambertMaterial({vertexColors:true});
+bldMat.onBeforeCompile = sh => { Object.assign(sh.uniforms, bldUni);
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 aInfo; attribute vec3 aRoof; varying vec3 vInfo; varying vec3 vRoof; varying vec3 vW; varying vec3 vN;')
+    .replace('#include <fog_vertex>', '#include <fog_vertex>\nvInfo = aInfo; vRoof = aRoof; vW = (modelMatrix * vec4(position,1.0)).xyz; vN = normalize(mat3(modelMatrix) * normal);');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uNight; uniform vec3 uWin, uGlow; varying vec3 vInfo; varying vec3 vRoof; varying vec3 vW; varying vec3 vN; float vWin = 0.0;')
+    .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += uGlow * vWin * uNight * 1.4;')
+    .replace('#include <color_fragment>', `#include <color_fragment>
+      float u = vInfo.x, H = vInfo.y, base = vInfo.z;
+      if(vN.y > 0.5){ diffuseColor.rgb = vRoof; float e = step(0.5, fract(0.0)); }   // 지붕: 위성에서 읽은 색
+      else if(abs(vN.y) < 0.5 && H > 3.5){
+        float fy = fract((vW.y - base) / 3.2); float along = abs(vN.x) > abs(vN.z) ? vW.z : vW.x; float fx = fract(along / 3.0); float win = 0.0;
+        if(u < 0.5){ win = step(0.3, fy) * step(fy, 0.75) * step(0.3, fx) * step(fx, 0.7); }                                       // 단독: 작은 창
+        else if(u < 1.5){ win = step(0.2, fy) * step(fy, 0.7) * step(0.12, fx) * step(fx, 0.88); if(fy < 0.14) diffuseColor.rgb *= 0.78; }   // 아파트: 발코니 띠 + 넓은 창
+        else if(u < 2.5){ win = step(0.25, fy) * step(fy, 0.75) * step(0.2, fx) * step(fx, 0.75); if(vW.y - base < 3.6) { diffuseColor.rgb *= 0.62; win = step(0.5, fract(along/4.0)); } }   // 상업: 1층 간판 띠
+        else if(u < 3.5){ win = step(0.45, fy) * step(fy, 0.7) * step(0.1, fx) * step(fx, 0.9) * step(0.5, fract(floor((vW.y - base)/3.2)/2.0)); }   // 공장: 드문 창
+        else if(u < 4.5){ win = step(0.2, fy) * step(fy, 0.8) * step(0.2, fx) * step(fx, 0.8); }                                   // 교육·공공: 큰 창
+        else if(u < 5.5){ win = step(0.15, fy) * step(fy, 0.85) * step(0.42, fx) * step(fx, 0.58); }                               // 종교: 길쭉한 창
+        else if(u < 6.5){ win = step(0.15, fy) * step(fy, 0.8) * step(0.08, fx) * step(fx, 0.92) * 0.85; }                         // 업무·숙박: 띠창
+        else if(u < 7.5){ win = step(0.3, fy) * step(fy, 0.7) * step(0.25, fx) * step(fx, 0.75); }                                 // 그 밖
+        else { win = step(0.25, fy) * step(fy, 0.72) * step(0.15, fx) * step(fx, 0.85); if(fy < 0.1) diffuseColor.rgb *= 0.85; }    // 빌라: 중간 창 + 얇은 층 띠
+        if(H > 55.0){ win = step(0.08, fy) * step(fx, 0.9) * 0.9; diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.45,0.56,0.68), 0.5); }
+        float lit = step(0.38, fract(sin(dot(vec2(floor(along / 3.0), floor((vW.y - base) / 3.2)), vec2(12.9898, 78.233))) * 43758.5453));
+        diffuseColor.rgb = mix(diffuseColor.rgb, uWin, win * 0.9 * (1.0 - uNight * 0.6)); vWin = win * mix(1.0, lit, uNight);
+      }
+      diffuseColor.rgb *= 0.92 + 0.08 * step(0.5, vN.y);`); };
+const edgeMat = new THREE.LineBasicMaterial({color:'#2a241c', transparent:true, opacity:.2});
+const roadMat = new THREE.MeshBasicMaterial({color:'#f4f1ea', transparent:true, opacity:.92});
+const leafGeo = new THREE.IcosahedronGeometry(5.2, 1), trunkGeo = new THREE.CylinderGeometry(.5, .7, 4, 5), trunkMat = new THREE.MeshLambertMaterial({color:'#6e5137'}), leafMat = new THREE.MeshLambertMaterial({color:'#ffffff'});
+// tiles 는 덩어리 절 위에서 선언
+let loading = 0;
+async function loadTile(tx, ty, force){
+  const key = `${tx}_${ty}`; if(tiles[key] || (!force && loading >= 3)) return; tiles[key] = {state:'loading', at:performance.now()}; loading++;
+  const tt = [performance.now()]; let T; try { T = await (await fetch(A(`tiles/${key}.json`))).json(); } catch(e){ delete tiles[key]; loading--; return; } tt.push(performance.now());
+  const group = new THREE.Group(), info = [], labels = [], items = [];
+  for(const [h, u, k, m, y, co] of T.b){
+    if(co.length < 6) continue; let cx = 0, cy = 0; for(let i = 0; i < co.length; i += 2){ cx += co[i]; cy += co[i + 1]; } cx /= co.length / 2; cy /= co.length / 2;
+    const base = hAt(cx, cy) - 1.5, H = Math.max(h, 3), c = wallColor(u, m, y, cx, cy);
+    items.push({co, base, H, wall:c, roof:c.clone().multiplyScalar(.92).lerp(ROOF[k] || ROOF[1], .3), info:[u, H, base]}); info.push({x:cx, y:cy, h:H, base});
+  }
+  if(items.length){ await new Promise(r => setTimeout(r, 0)); const {geo, edges} = extrudeMany(items, true); const mesh = new THREE.Mesh(geo, bldMat); mesh.castShadow = true; mesh.receiveShadow = true; group.add(mesh);
+    const e = new THREE.LineSegments(edges, edgeMat); e.userData.edges = true; group.add(e); }
+  tt.push(performance.now());
+  const rp = [];
+  for(const rd of T.r){ const w = rd[0] / 2;
+    for(let i = 1; i < rd.length - 2; i += 2){ const ax = rd[i], ay = rd[i + 1], bx = rd[i + 2], by = rd[i + 3], dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1, nx = -dy / L * w, ny = dx / L * w;
+      const q = [[ax + nx, ay + ny], [bx + nx, by + ny], [bx - nx, by - ny], [ax - nx, ay - ny]], pos = new Float32Array(18);
+      [0, 1, 2, 0, 2, 3].forEach((t, j) => { const [px, py] = q[t]; pos.set([px, hAt(px, py) + .4, -py], j * 3); });
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); rp.push(g); } }
+  if(rp.length){ const roads = new THREE.Mesh(BGU.mergeGeometries(rp, false), roadMat); roads.renderOrder = 1; group.add(roads); }
+  tt.push(performance.now());
+  const nt = T.t.length / 3;
+  if(nt){ const leaf = new THREE.InstancedMesh(leafGeo, leafMat, nt), trunk = new THREE.InstancedMesh(trunkGeo, trunkMat, nt), m = new THREE.Matrix4(), c = new THREE.Color();
+    for(let i = 0; i < nt; i++){ const x = T.t[i * 3], y = T.t[i * 3 + 1], k = T.t[i * 3 + 2], h = hAt(x, y), s = .8 + ((i * 7919) % 100) / 100 * .7;
+      m.makeScale(s, s * 1.15, s).setPosition(x, h + 5.5 * s + 1.6, -y); leaf.setMatrixAt(i, m); c.set(k === 1 ? '#3f7a3a' : '#6fb050').offsetHSL(0, 0, ((i * 31) % 10) / 100 - .05); leaf.setColorAt(i, c);
+      m.makeScale(1, s, 1).setPosition(x, h + 2 * s, -y); trunk.setMatrixAt(i, m); }
+    leaf.castShadow = true; group.add(leaf, trunk); }
+  tt.push(performance.now());
+  for(const [nm, x, y] of T.rn){ const sp = textSprite(ctx => { ctx.font = '600 38px "Noto Sans KR",sans-serif'; const w = Math.min(500, ctx.measureText(nm).width + 40);
+      rounded(ctx, 256 - w / 2, 36, w, 56, 10, 'rgba(255,255,255,.85)', null); ctx.fillStyle = '#4a4a4a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(nm, 256, 64); }, 512, 128);
+    sp.position.set(x, hAt(x, y) + 4, -y); sp.userData = {kind:'rn'}; group.add(sp); labels.push(sp); }
+  for(const [nm, ic, x, y] of T.p){ const sp = textSprite(ctx => { ctx.font = '600 36px "Noto Sans KR",sans-serif'; const txt = ic + ' ' + nm, w = Math.min(500, ctx.measureText(txt).width + 40);
+      rounded(ctx, 256 - w / 2, 30, w, 60, 30, 'rgba(236,244,250,.95)', 'rgba(31,111,139,.6)'); ctx.fillStyle = '#1f4f66'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, 256, 60); }, 512, 128);
+    sp.position.set(x, hAt(x, y) + 14, -y); sp.userData = {kind:'poi'}; group.add(sp); labels.push(sp); }
+  tt.push(performance.now()); scene.add(group); tiles[key] = {state:'ok', group, bld:info, labels, at:performance.now()}; loading--;
+  console.debug('tile', key, T.b.length, 'bld', tt.slice(1).map((t, i) => (t - tt[i]).toFixed(0)).join('/'), '(fetch/bld/road/tree/label ms)');
+  if(blockMeshes[key]) blockMeshes[key].visible = false;
+  liftPins();
+}
+function dropTile(key){ const t = tiles[key]; if(!t || t.state !== 'ok') return; scene.remove(t.group);
+  t.group.traverse(o => { if(o.geometry && o.geometry !== leafGeo && o.geometry !== trunkGeo) o.geometry.dispose(); if(o.material && o.material.map) { o.material.map.dispose(); o.material.dispose(); } });
+  delete tiles[key]; if(blockMeshes[key]) blockMeshes[key].visible = true; }
+function streamTiles(){
+  const t = controls.target, alt = camera.position.y - hAt(camera.position.x, -camera.position.z);
+  if(alt > 3600) return;
+  const [cx, cy] = tileOf(t.x, -t.z), want = [];
+  for(let dx = -2; dx <= 2; dx++) for(let dy = -2; dy <= 2; dy++){ const tx = cx + dx, ty = cy + dy; if(tx < TX0 || tx > TX1 || ty < TY0 || ty > TY1) continue;
+    const [mx, my] = tileCenter(tx, ty), d = Math.hypot(mx - t.x, my + t.z); if(d < 2900) want.push([d, tx, ty]); }
+  want.sort((a, b) => a[0] - b[0]);
+  for(const [, tx, ty] of want){ if(loading >= 3) break; loadTile(tx, ty); }
+  const keys = Object.keys(tiles).filter(k => tiles[k].state === 'ok');
+  if(keys.length > 30){ keys.sort((a, b) => { const [ax, ay] = a.split('_').map(Number), [bx, by] = b.split('_').map(Number); const [am0, am1] = tileCenter(ax, ay), [bm0, bm1] = tileCenter(bx, by);
+    return Math.hypot(bm0 - t.x, bm1 + t.z) - Math.hypot(am0 - t.x, am1 + t.z); }); for(const k of keys.slice(0, keys.length - 30)) dropTile(k); }
+}
+
+// ---------- 노포 핀
+let PLACES = PLACES_ALL.slice(), pins = [];
+const pinTex = new Map();
+function pinTexture(name){ if(pinTex.has(name)) return pinTex.get(name);
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256; const g = cv.getContext('2d');
+  g.font = '700 44px "Noto Sans KR",sans-serif'; const w = Math.min(480, g.measureText(name).width + 48);
+  rounded(g, 256 - w / 2, 10, w, 68, 34, 'rgba(255,255,255,.96)', 'rgba(0,0,0,.35)'); g.fillStyle = '#1a1a1a'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(name, 256, 46);
+  g.fillStyle = '#d7232f'; g.strokeStyle = '#fff'; g.lineWidth = 8; g.beginPath(); g.moveTo(256, 240); g.bezierCurveTo(200, 170, 196, 150, 196, 130); g.arc(256, 130, 60, Math.PI, 0); g.bezierCurveTo(316, 150, 312, 170, 256, 240); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle = '#fff'; g.beginPath(); g.arc(256, 130, 22, 0, 7); g.fill();
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; pinTex.set(name, t); return t; }
+function roofAt(x, y){ let top = hAt(x, y) + 8; const [tx, ty] = tileOf(x, y), t = tiles[`${tx}_${ty}`];
+  if(t && t.state === 'ok'){ top = hAt(x, y); for(const b of t.bld){ if(Math.abs(b.x - x) < 22 && Math.abs(b.y - y) < 22) top = Math.max(top, b.base + b.h); } } return top; }
+function makePins(){
+  for(const p of pins){ scene.remove(p); scene.remove(p.userData.stem); } pins = [];
+  for(const p of PLACES){ const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:pinTexture(p.name), transparent:true, depthTest:false}));
+    const top = roofAt(p.x, p.y); sp.position.set(p.x, top + 34, -p.y); sp.renderOrder = 5;
+    const stem = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(p.x, hAt(p.x, p.y), -p.y), new THREE.Vector3(p.x, top + 20, -p.y)]), new THREE.LineBasicMaterial({color:'#d7232f', transparent:true, opacity:.8}));
+    sp.userData = {p, top, stem, big:false}; scene.add(sp, stem); pins.push(sp); }
+  makeBubbles(); }
+function liftPins(){ for(const sp of pins){ const p = sp.userData.p, top = roofAt(p.x, p.y); if(Math.abs(top - sp.userData.top) < .5) continue; sp.userData.top = top; sp.position.y = top + 34;
+  const pos = sp.userData.stem.geometry.attributes.position; pos.setY(1, top + 20); pos.needsUpdate = true; } }
+
+// ---------- 상태·UI
+let level = 'seoul', curGu = null, curN = null;
+function updateState(){ const t = controls.target, alt = camera.position.y - hAt(camera.position.x, -camera.position.z);
+  const lv = alt < 3600 ? 'gu' : 'seoul', g = lv === 'gu' ? guOf(t.x, -t.z) : null;
+  if(lv === level && g === curGu) return; level = lv; curGu = g;
+  const ps = g ? PLACES.filter(p => p.gu === g) : [];
+  $('#where').textContent = g ? '서울 ' + g : '서울'; $('#count').textContent = g ? `노포 ${ps.length}곳 · 핀을 누르면 가까이 가서 이야기를 봐요` : `노포 ${PLACES.length}곳 · 구 동그라미를 누르면 내려가요`;
+  $('#back').hidden = lv !== 'gu'; $('#tour').hidden = !(lv === 'gu' && ps.length);
+  $('#list').innerHTML = ps.sort((a, b) => a.yr - b.yr).map(p => `<div class="li"><button data-n="${p.n}" data-a="info">${p.name}<small>${p.yr}년부터</small></button><button data-n="${p.n}" data-a="fly" title="여기로 날아가기">🚁</button></div>`).join('');
+  post({t:'state', level:lv, gu:g, count:g ? ps.length : PLACES.length}); }
+$('#list').onclick = e => { const b = e.target.closest('button'); if(!b) return; if(b.dataset.a === 'fly') flyToPlace(+b.dataset.n, true); else post({t:'open', n:+b.dataset.n}); };
+const applyFilter = ns => { PLACES = ns ? PLACES_ALL.filter(p => ns.includes(p.n)) : PLACES_ALL.slice(); makePins(); level = null; updateState(); };
+
+// ---------- 카메라 연출
+const cam = {x:0, y:0, z:0, tx:0, ty:0, tz:0};
+const snap = () => Object.assign(cam, {x:camera.position.x, y:camera.position.y, z:camera.position.z, tx:controls.target.x, ty:controls.target.y, tz:controls.target.z});
+const applyCam = () => { camera.position.set(cam.x, cam.y, cam.z); controls.target.set(cam.tx, cam.ty, cam.tz); };
+let tl = null, touring = false, bearing = -.5;
+function stopAll(){ if(tl){ tl.kill(); tl = null; } if(touring){ touring = false; level = null; updateState(); } $('#tour').textContent = '🚁 둘러보기'; controls.enabled = true; }
+const shot = (x, y, top, dist, hgt, br) => ({x:x - Math.sin(br) * dist, y:top + hgt, z:-y - Math.cos(br) * dist, tx:x, ty:top + 6, tz:-y});
+function prefetchAround(x, y){ const [cx, cy] = tileOf(x, y); const want = []; for(let dx = -1; dx <= 1; dx++) for(let dy = -1; dy <= 1; dy++){ const tx = cx + dx, ty = cy + dy; if(tx >= TX0 && tx <= TX1 && ty >= TY0 && ty <= TY1) want.push([Math.abs(dx) + Math.abs(dy), tx, ty]); }
+  want.sort((a, b) => a[0] - b[0]); for(const [, tx, ty] of want) loadTile(tx, ty, true); }
+function flyToGu(k){ const g = META.gu.find(g => g.k === k); if(!g) return; stopAll(); snap(); controls.enabled = false; bearing -= .5; prefetchAround(g.c[0], g.c[1]);
+  const h = hAt(g.c[0], g.c[1]); tl = gsap.timeline({onUpdate:applyCam, onComplete:() => { controls.enabled = true; tl = null; }});
+  tl.to(cam, {...shot(g.c[0], g.c[1], h, 2300, 1900, bearing), duration:3.2, ease:'power2.inOut'}); $('#tip').classList.add('off'); }
+function flyToPlace(n, open){ const p = PLACES_ALL.find(p => p.n === n); if(!p) return; stopAll(); snap(); controls.enabled = false; bearing -= .9; prefetchAround(p.x, p.y);
+  const far = Math.hypot(camera.position.x - p.x, -camera.position.z - p.y) > 2500; curN = n;
+  pins.forEach(s => s.userData.big = s.userData.p.n === n);
+  tl = gsap.timeline({onUpdate:applyCam, onComplete:() => { controls.enabled = true; tl = null; if(open) post({t:'open', n}); }});
+  if(far) tl.to(cam, {...shot(p.x, p.y, hAt(p.x, p.y), 1600, 1300, bearing + .4), duration:2.2, ease:'power2.inOut'});
+  tl.to(cam, {...shot(p.x, p.y, roofAt(p.x, p.y), 170, 95, bearing), duration:far ? 2.0 : 2.3, ease:'power2.inOut', onUpdate:() => { const top = roofAt(p.x, p.y); cam.ty = top + 6; }}); }
+$('#tour').onclick = () => { if(touring) return stopAll();
+  const ps = PLACES.filter(p => p.gu === curGu); if(!ps.length) return; stopAll(); snap(); touring = true; $('#tour').textContent = '■ 멈춤'; controls.enabled = false;
+  let left = ps.slice(), cur = {x:controls.target.x, y:-controls.target.z}; const order = [];
+  while(left.length){ left.sort((a, b) => Math.hypot(a.x - cur.x, a.y - cur.y) - Math.hypot(b.x - cur.x, b.y - cur.y)); const p = left.shift(); order.push(p); cur = p; }
+  tl = gsap.timeline({onUpdate:applyCam, onComplete:stopAll}); let prev = {x:cam.x, y:-cam.z};
+  order.forEach(p => { const km = Math.hypot(p.x - prev.x, p.y - prev.y) / 1000, d = Math.min(5, 1.6 + km * 1.4); bearing -= .7;
+    tl.to(cam, {...shot(p.x, p.y, roofAt(p.x, p.y), 160, 90, bearing), duration:d, ease:'power1.inOut'}).call(() => { pins.forEach(s => s.userData.big = s.userData.p.n === p.n); $('#count').textContent = `둘러보는 중 · ${p.name} (${p.yr}년부터) · 핀을 누르면 이야기를 봐요`; })
+      .to(cam, {...shot(p.x, p.y, roofAt(p.x, p.y), 150, 85, bearing - .35), duration:1.6, ease:'none'}); prev = p; }); };
+$('#back').onclick = () => { stopAll(); snap(); controls.enabled = false; tl = gsap.timeline({onUpdate:applyCam, onComplete:() => { controls.enabled = true; tl = null; }});
+  tl.to(cam, {x:0, y:9000, z:9500, tx:0, ty:hAt(0, 0), tz:0, duration:3.0, ease:'power2.inOut'}); };
+canvas.addEventListener('pointerdown', () => { if(touring || tl) stopAll(); $('#tip').classList.add('off'); });
+canvas.addEventListener('wheel', () => { if(touring || tl) stopAll(); }, {passive:true});
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(); let downAt = null;
+canvas.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+canvas.addEventListener('pointerup', e => { if(!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) return;
+  ptr.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ptr, camera);
+  const hp = ray.intersectObjects(pins, false)[0]; if(hp) return flyToPlace(hp.object.userData.p.n, true);
+  const hb = ray.intersectObjects(bubbles, false)[0]; if(hb) return flyToGu(hb.object.userData.gu); });
+$('#nav').onclick = e => { const b = e.target.closest('button'); if(!b) return; stopAll(); const a = b.dataset.a, d = camera.position.distanceTo(controls.target), step = d * .25;
+  const f = new THREE.Vector3().subVectors(controls.target, camera.position); f.y = 0; f.normalize(); const r = new THREE.Vector3(-f.z, 0, f.x); const mv = v => { camera.position.add(v); controls.target.add(v); };
+  if(a === 'up') mv(f.multiplyScalar(step)); else if(a === 'down') mv(f.multiplyScalar(-step)); else if(a === 'left') mv(r.multiplyScalar(-step)); else if(a === 'right') mv(r.multiplyScalar(step));
+  else if(a === 'in') camera.position.lerp(controls.target, .3); else if(a === 'out') camera.position.sub(controls.target).multiplyScalar(1.4).add(controls.target);
+  else if(a === 'rl' || a === 'rr'){ const o = camera.position.clone().sub(controls.target); o.applyAxisAngle(new THREE.Vector3(0, 1, 0), a === 'rl' ? .45 : -.45); camera.position.copy(controls.target).add(o); }
+  else if(a === 'tilt'){ const o = camera.position.clone().sub(controls.target); const h = Math.hypot(o.x, o.z); const ang = Math.atan2(o.y, h) + (o.y / d > .8 ? -.5 : .25); const L = o.length(); o.y = Math.sin(ang) * L; const k = Math.cos(ang) * L / (h || 1); o.x *= k; o.z *= k; camera.position.copy(controls.target).add(o); } };
+
+// ---------- 낮·노을·밤
+const MODES = {
+  day:  {sky:['#79aee0','#e9f1f7'], fog:'#dfe9f0', sun:['#fff4e0', 2.0], hemi:['#dff0ff','#8d8a76', 1.05], ground:'#ffffff', night:0, exp:1.1, water:['#5fc4da','#3a9bb7']},
+  dusk: {sky:['#f0a46a','#fbe3c0'], fog:'#f3d3b0', sun:['#ffb070', 1.9], hemi:['#ffd9b0','#6a5040', .6], ground:'#f2d2a8', night:0, exp:1.0, water:['#d9a070','#8a6a60']},
+  night:{sky:['#0b1424','#2a3a55'], fog:'#1b2436', sun:['#8fa6c8', .4], hemi:['#5a72a0','#141a28', .9], ground:'#6a7488', night:1, exp:1.0, water:['#243a55','#141f33']},
+};
+function setMode(m){ const M = MODES[m];
+  sky.material.uniforms.top.value.set(M.sky[0]); sky.material.uniforms.bottom.value.set(M.sky[1]); scene.fog.color.set(M.fog);
+  sun.color.set(M.sun[0]); sun.intensity = M.sun[1]; hemi.color.set(M.hemi[0]); hemi.groundColor.set(M.hemi[1]); hemi.intensity = M.hemi[2];
+  groundMat.color.set(groundMat.map ? M.ground : '#e9e4d6'); bldUni.uNight.value = M.night; renderer.toneMappingExposure = M.exp; waterUni.uCol.value.set(M.water[0]).convertSRGBToLinear(); waterUni.uDeep.value.set(M.water[1]).convertSRGBToLinear();
+  document.querySelectorAll('[data-m]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === m))); }
+document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => setMode(b.dataset.m));
+let edgesOn = true; $('#edges').onclick = () => { edgesOn = !edgesOn; $('#edges').setAttribute('aria-pressed', String(edgesOn)); };
+
+// ---------- 부모(지도 페이지)와 주고받기
+addEventListener('message', e => { const m = e.data || {}; if(m.src !== 'nopo') return;
+  if(m.t === 'filter') applyFilter(m.ns); else if(m.t === 'fly') flyToPlace(m.n, !!m.open); else if(m.t === 'mode') setMode(m.m); else if(m.t === 'gu') flyToGu(m.gu); else if(m.t === 'home') $('#back').onclick(); });
+
+// ---------- 루프
+function resize(){ renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+camera.position.set(0, 9000, 9500); controls.target.set(0, hAt(0, 0), 0);
+makePins();
+const clock = new THREE.Clock(); let lastPos = camera.position.clone(), spd = 0, tick = 0;
+function frame(){ const dt = Math.min(.1, clock.getDelta()); tick++;
+  waterUni.uTime.value += dt; paperUni.uCam.value.copy(camera.position); waterUni.uCamW.value.copy(camera.position);
+  sun.target.position.copy(controls.target); sun.position.copy(controls.target).add(new THREE.Vector3(-2400, 3200, 1600)); sun.shadow.camera.updateProjectionMatrix();
+  if(tick % 10 === 0){ streamTiles(); updateState(); }
+  const camD = camera.position.distanceTo(controls.target), alt = camera.position.y - hAt(camera.position.x, -camera.position.z);
+  edgeMat.opacity = edgesOn ? Math.max(0, Math.min(.2, (2600 - camD) / 2000 * .2)) : 0;
+  for(const sp of pins){ const d = camera.position.distanceTo(sp.position), k = Math.max(26, Math.min(160, d * .055)) * (sp.userData.big ? 1.3 : 1); sp.scale.set(k, k / 2, 1); sp.visible = alt < 6000; }
+  for(const b of bubbles){ const d = camera.position.distanceTo(b.position), k = Math.max(300, Math.min(1400, d * .085)) * (b.userData.big ? 1.25 : 1); b.scale.set(k, k, 1); b.visible = alt > 2800; }
+  for(const s of marks){ const d = camera.position.distanceTo(s.position); if(s.userData.kind === 'lm'){ s.visible = d < 12000 && alt > 150; const k = Math.max(120, Math.min(1400, d * .09)); s.scale.set(k, k / 2, 1); }
+    else { s.visible = d < 2600; const k = Math.max(30, Math.min(220, d * .07)); s.scale.set(k, k, 1); } }
+  for(const t of Object.values(tiles)){ if(t.state !== 'ok') continue; for(const s of t.labels){ const d = camera.position.distanceTo(s.position); s.visible = s.userData.kind === 'rn' ? d < 1500 : d < 800; const k = Math.max(24, Math.min(120, d * .075)); s.scale.set(k, k / 4, 1); } }
+  const dd = camera.position.distanceTo(lastPos); spd = (touring || tl) ? spd * .8 + (dd / Math.max(dt, 1e-3)) * 3.6 * .2 : spd * .9; lastPos.copy(camera.position);
+  $('#stat').textContent = `고도 ${Math.max(0, alt).toFixed(0)} m · 시속 ${spd.toFixed(0)} km` + (touring ? ' · 둘러보는 중' : '');
+  controls.update(); renderer.render(scene, camera); requestAnimationFrame(frame); }
+$('#load').hidden = true; window.__seoul = {scene, camera, controls, pins, tiles, flyToPlace, flyToGu, applyFilter, blocksReady}; post({t:'ready'}); frame();
+</script>
+</body>
+</html>
