@@ -370,7 +370,7 @@ function updateState(){ const t = controls.target, alt = camera.position.y - hAt
   const lv = alt < 3600 ? 'gu' : 'seoul', g = lv === 'gu' ? guOf(t.x, -t.z) : null;
   if(lv === level && g === curGu) return; level = lv; curGu = g;
   const ps = g ? PLACES.filter(p => p.gu === g) : [];
-  $('#where').textContent = g ? CNAME + ' ' + g : CNAME; $('#count').textContent = g ? `노포 ${ps.length}곳 · 핀을 누르면 가까이 가서 이야기를 봐요` : `노포 ${PLACES.length}곳 · 구 동그라미를 누르면 내려가요`;
+  $('#where').textContent = g ? CNAME + ' ' + g : CNAME; $('#count').textContent = !PLACES.length ? `아직 소개한 노포가 없어요 · 구 동그라미로 내려가 둘러볼 수 있어요` : g ? `노포 ${ps.length}곳 · 핀을 누르면 가까이 가서 이야기를 봐요` : `노포 ${PLACES.length}곳 · 구 동그라미를 누르면 내려가요`;
   $('#back').hidden = lv !== 'gu'; $('#tour').hidden = !(lv === 'gu' && ps.length);
   $('#list').innerHTML = ps.sort((a, b) => a.yr - b.yr).map(p => `<div class="li"><button data-n="${p.n}" data-a="info">${p.name}<small>${p.yr}년부터</small></button><button data-n="${p.n}" data-a="fly" title="여기로 날아가기">🚁</button></div>`).join('');
   post({t:'state', level:lv, gu:g, count:g ? ps.length : PLACES.length}); }
@@ -450,7 +450,7 @@ function frame(){ const dt = Math.min(.1, clock.getDelta()); tick++;
   if(tick % 10 === 0){ streamTiles(); updateState(); }
   const camD = camera.position.distanceTo(controls.target), alt = camera.position.y - hAt(camera.position.x, -camera.position.z);
   edgeMat.opacity = edgesOn ? Math.max(0, Math.min(.2, (2600 - camD) / 2000 * .2)) : 0;
-  for(const sp of pins){ const d = camera.position.distanceTo(sp.position), k = Math.max(26, Math.min(160, d * .055)) * (sp.userData.big ? 1.3 : 1); sp.scale.set(k, k / 2, 1); sp.visible = alt < 6000; }
+  for(const sp of pins){ const d = camera.position.distanceTo(sp.position), k = Math.max(26, Math.min(PLACES.length <= 40 ? 420 : 160, d * .055)) * (sp.userData.big ? 1.3 : 1); sp.scale.set(k, k / 2, 1); sp.visible = alt < 6000 || PLACES.length <= 40; }   // 노포가 적은 도시(부산·대전 등)는 첫 화면부터 핀을 보인다
   for(const b of bubbles){ const d = camera.position.distanceTo(b.position), k = Math.max(300, Math.min(1400, d * .085)) * (b.userData.big ? 1.25 : 1); b.scale.set(k, k, 1); b.visible = alt > 2800; }
   for(const s of marks){ const d = camera.position.distanceTo(s.position); if(s.userData.kind === 'lm'){ s.visible = d < 12000 && alt > 150; const k = Math.max(120, Math.min(1400, d * .09)); s.scale.set(k, k / 2, 1); }
     else { s.visible = d < 2600; const k = Math.max(30, Math.min(220, d * .07)); s.scale.set(k, k, 1); } }
