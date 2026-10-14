@@ -369,9 +369,9 @@ let level = null, curGu = null, curN = null;   // null: 첫 프레임에 머리�
 function updateState(){ const t = controls.target, alt = camera.position.y - hAt(camera.position.x, -camera.position.z);
   const lv = alt < 3600 ? 'gu' : 'seoul', g = lv === 'gu' ? guOf(t.x, -t.z) : null;
   if(lv === level && g === curGu) return; level = lv; curGu = g;
-  const ps = g ? PLACES.filter(p => p.gu === g) : [];
+  const ps = g ? PLACES.filter(p => p.gu === g) : (PLACES.length <= 40 ? PLACES.slice() : []);   // 노포가 적은 도시는 첫 화면 목록에도 전부
   $('#where').textContent = g ? CNAME + ' ' + g : CNAME; $('#count').textContent = !PLACES.length ? `아직 소개한 노포가 없어요 · 구 동그라미로 내려가 둘러볼 수 있어요` : g ? `노포 ${ps.length}곳 · 핀을 누르면 가까이 가서 이야기를 봐요` : `노포 ${PLACES.length}곳 · 구 동그라미를 누르면 내려가요`;
-  $('#back').hidden = lv !== 'gu'; $('#tour').hidden = !(lv === 'gu' && ps.length);
+  $('#back').hidden = lv !== 'gu'; $('#tour').hidden = !ps.length || (lv !== 'gu' && PLACES.length > 40);
   $('#list').innerHTML = ps.sort((a, b) => a.yr - b.yr).map(p => `<div class="li"><button data-n="${p.n}" data-a="info">${p.name}<small>${p.yr}년부터</small></button><button data-n="${p.n}" data-a="fly" title="여기로 날아가기">🚁</button></div>`).join('');
   post({t:'state', level:lv, gu:g, count:g ? ps.length : PLACES.length}); }
 $('#list').onclick = e => { const b = e.target.closest('button'); if(!b) return; if(b.dataset.a === 'fly') flyToPlace(+b.dataset.n, true); else post({t:'open', n:+b.dataset.n}); };
@@ -396,7 +396,7 @@ function flyToPlace(n, open){ const p = PLACES_ALL.find(p => p.n === n); if(!p) 
   if(far) tl.to(cam, {...shot(p.x, p.y, hAt(p.x, p.y), 1600, 1300, bearing + .4), duration:2.2, ease:'power2.inOut'});
   tl.to(cam, {...shot(p.x, p.y, roofAt(p.x, p.y), 170, 95, bearing), duration:far ? 2.0 : 2.3, ease:'power2.inOut', onUpdate:() => { const top = roofAt(p.x, p.y); cam.ty = top + 6; }}); }
 $('#tour').onclick = () => { if(touring) return stopAll();
-  const ps = PLACES.filter(p => p.gu === curGu); if(!ps.length) return; stopAll(); snap(); touring = true; $('#tour').textContent = '■ 멈춤'; controls.enabled = false;
+  const ps = PLACES.filter(p => !curGu || p.gu === curGu); if(!ps.length) return; stopAll(); snap(); touring = true; $('#tour').textContent = '■ 멈춤'; controls.enabled = false;
   let left = ps.slice(), cur = {x:controls.target.x, y:-controls.target.z}; const order = [];
   while(left.length){ left.sort((a, b) => Math.hypot(a.x - cur.x, a.y - cur.y) - Math.hypot(b.x - cur.x, b.y - cur.y)); const p = left.shift(); order.push(p); cur = p; }
   tl = gsap.timeline({onUpdate:applyCam, onComplete:stopAll}); let prev = {x:cam.x, y:-cam.z};
@@ -450,7 +450,7 @@ function frame(){ const dt = Math.min(.1, clock.getDelta()); tick++;
   if(tick % 10 === 0){ streamTiles(); updateState(); }
   const camD = camera.position.distanceTo(controls.target), alt = camera.position.y - hAt(camera.position.x, -camera.position.z);
   edgeMat.opacity = edgesOn ? Math.max(0, Math.min(.2, (2600 - camD) / 2000 * .2)) : 0;
-  for(const sp of pins){ const d = camera.position.distanceTo(sp.position), k = Math.max(26, Math.min(PLACES.length <= 40 ? 420 : 160, d * .055)) * (sp.userData.big ? 1.3 : 1); sp.scale.set(k, k / 2, 1); sp.visible = alt < 6000 || PLACES.length <= 40; }   // 노포가 적은 도시(부산·대전 등)는 첫 화면부터 핀을 보인다
+  for(const sp of pins){ const d = camera.position.distanceTo(sp.position), k = Math.max(26, Math.min(PLACES.length <= 40 ? 900 : 160, d * (PLACES.length <= 40 ? .075 : .055))) * (sp.userData.big ? 1.3 : 1); sp.scale.set(k, k / 2, 1); sp.visible = alt < 6000 || PLACES.length <= 40; }   // 노포가 적은 도시(부산·대전 등)는 첫 화면부터 핀을 보인다
   for(const b of bubbles){ const d = camera.position.distanceTo(b.position), k = Math.max(300, Math.min(1400, d * .085)) * (b.userData.big ? 1.25 : 1); b.scale.set(k, k, 1); b.visible = alt > 2800; }
   for(const s of marks){ const d = camera.position.distanceTo(s.position); if(s.userData.kind === 'lm'){ s.visible = d < 12000 && alt > 150; const k = Math.max(120, Math.min(1400, d * .09)); s.scale.set(k, k / 2, 1); }
     else { s.visible = d < 2600; const k = Math.max(30, Math.min(220, d * .07)); s.scale.set(k, k, 1); } }
