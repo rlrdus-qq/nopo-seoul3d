@@ -43,14 +43,15 @@ button[hidden],a[hidden]{display:none}
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="load"><div><b>서울을 접는 중…</b><span id="load-t">지형과 바닥을 불러옵니다</span></div></div>
+<div id="load"><div><b id="load-h">도시를 접는 중…</b><span id="load-t">지형과 바닥을 불러옵니다</span></div></div>
 <div class="ui" id="top">
   <div class="card">
     <h1><span id="where">서울</span><small>종이 모형</small></h1>
     <p class="sub" id="count"></p>
     <div class="row">
       <button id="exit" hidden>← 전국 지도로</button>
-      <button id="back" hidden>← 서울 전체로</button>
+      <button id="back" hidden>← 전체로</button>
+      <select id="city" title="다른 도시 보기" style="border:1px solid rgba(0,0,0,.2);border-radius:999px;padding:6px 10px;font-size:13px;background:#fff"></select>
       <button id="tour" class="red" hidden>🚁 둘러보기</button>
       <button id="edges" aria-pressed="true">윤곽선</button>
       <span style="display:inline-flex;gap:4px"><button data-m="day" aria-pressed="true">낮</button><button data-m="dusk">노을</button><button data-m="night">밤</button></span>
@@ -111,7 +112,11 @@ function extrudeMany(items, withAttrs){
 
 const $ = s => document.querySelector(s);
 const ASSET_BASE = '';   // 3D 자료(타일·바닥·지형) 주소 앞머리. 빌드가 site.json seoul3d_assets 로 채움(GitHub Pages 등), 비면 같은 폴더
-const A = p => ASSET_BASE + p;
+const CITIES = {'':'서울', busan:'부산', daegu:'대구', incheon:'인천', gwangju:'광주', daejeon:'대전', ulsan:'울산'};   // 10-14 광역시 3D(자료는 c/<id>/, build_city3d.py)
+const CITY = (new URLSearchParams(location.search).get('c') || '').replace(/[^a-z]/g, '');
+const A = p => ASSET_BASE + (CITY && CITIES[CITY] ? `c/${CITY}/` : '') + p;
+const CNAME = CITIES[CITY] || '서울';
+document.title = `노포 바이블 · ${CNAME} 종이 모형`;
 const EMBED = window.parent !== window;
 const post = m => { if(EMBED) window.parent.postMessage(Object.assign({src:'seoul3d'}, m), '*'); };
 if(EMBED){ $('#tomap').hidden = true; $('#exit').hidden = false; }
@@ -127,6 +132,10 @@ const getJ = async (u, label) => { const r = await fetch(u); const t = await r.t
 const [META, PLACES_ALL, DEM] = await Promise.all([getJ(A('meta.json'), '지도 정보'), getJ(A('places.json'), '노포 자리'), loadDem().then(d => { prog('지형', d.length * 2); return d; })]);
 const lateWater = getJ(A('water.json'), '강·하천'), lateBlocks = getJ(A('blocks.json'), '도시 덩어리');
 const [x0, y0, x1, y1] = META.bbox, BW = x1 - x0, BH = y1 - y0;
+const HOME = Math.max(4500, Math.min(9000, Math.max(BW, BH) * .24));   // 서울(40km)≈9000, 대전(30km)≈7200
+$('#load-h').textContent = `${CNAME}을 접는 중…`; $('#where').textContent = CNAME; $('#back').textContent = `← ${CNAME} 전체로`;
+$('#city').innerHTML = Object.entries(CITIES).map(([k, v]) => `<option value="${k}"${k === CITY ? ' selected' : ''}>${v}</option>`).join('');
+$('#city').onchange = e => { const k = e.target.value; if(EMBED) post({t:'city', c:k}); else location.search = k ? '?c=' + k : ''; };
 const DW = META.dem.w, DH = META.dem.h, DS = META.dem.step;
 // 지형: 80m 격자(40m 격자의 절반)를 바닥 그물과 건물 밑바닥이 함께 쓴다 → 서로 어긋나지 않는다
 const G2W = Math.floor((DW - 1) / 2) + 1, G2H = Math.floor((DH - 1) / 2) + 1, G2S = DS * 2, G2 = new Float32Array(G2W * G2H);
@@ -219,9 +228,9 @@ const rounded = (g, x, y, w, h, r, fill, stroke) => { g.beginPath(); g.roundRect
 const bubbles = [];
 function makeBubbles(){
   for(const b of bubbles) scene.remove(b); bubbles.length = 0;
-  for(const g of META.gu){ const n = PLACES.filter(p => p.gu === g.k).length; if(!n) continue;
-    const sp = textSprite(ctx => { ctx.beginPath(); ctx.arc(128, 100, 78, 0, 7); ctx.fillStyle = '#d7232f'; ctx.fill(); ctx.lineWidth = 8; ctx.strokeStyle = '#fff'; ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.font = '700 72px "Noto Sans KR",sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n, 128, 100);
+  for(const g of META.gu){ const n = PLACES.filter(p => p.gu === g.k).length;   // 노포가 없는 구도 회색 동그라미로(내려가 볼 수 있게)
+    const sp = textSprite(ctx => { ctx.beginPath(); ctx.arc(128, 100, n ? 78 : 46, 0, 7); ctx.fillStyle = n ? '#d7232f' : '#8f8a80'; ctx.fill(); ctx.lineWidth = 8; ctx.strokeStyle = '#fff'; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = (n ? '700 72px' : '700 40px') + ' "Noto Sans KR",sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n || '3D', 128, 100);
       rounded(ctx, 28, 192, 200, 56, 28, 'rgba(255,255,255,.95)', 'rgba(0,0,0,.3)'); ctx.fillStyle = '#1a1a1a'; ctx.font = '700 36px "Noto Sans KR",sans-serif'; ctx.fillText(g.k, 128, 221); }, 256, 256);
     sp.material.depthTest = false; sp.renderOrder = 6; sp.position.set(g.c[0], hAt(g.c[0], g.c[1]) + 420, -g.c[1]); sp.userData = {gu:g.k, big:n >= 20}; scene.add(sp); bubbles.push(sp); } }
 const marks = [];
@@ -356,12 +365,12 @@ function liftPins(){ for(const sp of pins){ const p = sp.userData.p, top = roofA
   const pos = sp.userData.stem.geometry.attributes.position; pos.setY(1, top + 20); pos.needsUpdate = true; } }
 
 // ---------- 상태·UI
-let level = 'seoul', curGu = null, curN = null;
+let level = null, curGu = null, curN = null;   // null: 첫 프레임에 머리말을 채운다
 function updateState(){ const t = controls.target, alt = camera.position.y - hAt(camera.position.x, -camera.position.z);
   const lv = alt < 3600 ? 'gu' : 'seoul', g = lv === 'gu' ? guOf(t.x, -t.z) : null;
   if(lv === level && g === curGu) return; level = lv; curGu = g;
   const ps = g ? PLACES.filter(p => p.gu === g) : [];
-  $('#where').textContent = g ? '서울 ' + g : '서울'; $('#count').textContent = g ? `노포 ${ps.length}곳 · 핀을 누르면 가까이 가서 이야기를 봐요` : `노포 ${PLACES.length}곳 · 구 동그라미를 누르면 내려가요`;
+  $('#where').textContent = g ? CNAME + ' ' + g : CNAME; $('#count').textContent = g ? `노포 ${ps.length}곳 · 핀을 누르면 가까이 가서 이야기를 봐요` : `노포 ${PLACES.length}곳 · 구 동그라미를 누르면 내려가요`;
   $('#back').hidden = lv !== 'gu'; $('#tour').hidden = !(lv === 'gu' && ps.length);
   $('#list').innerHTML = ps.sort((a, b) => a.yr - b.yr).map(p => `<div class="li"><button data-n="${p.n}" data-a="info">${p.name}<small>${p.yr}년부터</small></button><button data-n="${p.n}" data-a="fly" title="여기로 날아가기">🚁</button></div>`).join('');
   post({t:'state', level:lv, gu:g, count:g ? ps.length : PLACES.length}); }
@@ -395,7 +404,7 @@ $('#tour').onclick = () => { if(touring) return stopAll();
     tl.to(cam, {...shot(p.x, p.y, roofAt(p.x, p.y), 160, 90, bearing), duration:d, ease:'power1.inOut'}).call(() => { pins.forEach(s => s.userData.big = s.userData.p.n === p.n); $('#count').textContent = `둘러보는 중 · ${p.name} (${p.yr}년부터) · 핀을 누르면 이야기를 봐요`; })
       .to(cam, {...shot(p.x, p.y, roofAt(p.x, p.y), 150, 85, bearing - .35), duration:1.6, ease:'none'}); prev = p; }); };
 $('#back').onclick = () => { stopAll(); snap(); controls.enabled = false; tl = gsap.timeline({onUpdate:applyCam, onComplete:() => { controls.enabled = true; tl = null; }});
-  tl.to(cam, {x:0, y:9000, z:9500, tx:0, ty:hAt(0, 0), tz:0, duration:3.0, ease:'power2.inOut'}); };
+  tl.to(cam, {x:0, y:HOME, z:HOME * 1.05, tx:0, ty:hAt(0, 0), tz:0, duration:3.0, ease:'power2.inOut'}); };
 canvas.addEventListener('pointerdown', () => { if(touring || tl) stopAll(); $('#tip').classList.add('off'); });
 canvas.addEventListener('wheel', () => { if(touring || tl) stopAll(); }, {passive:true});
 const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(); let downAt = null;
@@ -432,7 +441,7 @@ addEventListener('message', e => { const m = e.data || {}; if(m.src !== 'nopo') 
 // ---------- 루프
 function resize(){ renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
-camera.position.set(0, 9000, 9500); controls.target.set(0, hAt(0, 0), 0);
+camera.position.set(0, HOME, HOME * 1.05); controls.target.set(0, hAt(0, 0), 0);
 makePins();
 const clock = new THREE.Clock(); let lastPos = camera.position.clone(), spd = 0, tick = 0;
 function frame(){ const dt = Math.min(.1, clock.getDelta()); tick++;
