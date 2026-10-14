@@ -112,7 +112,7 @@ function extrudeMany(items, withAttrs){
 
 const $ = s => document.querySelector(s);
 const ASSET_BASE = '';   // 3D 자료(타일·바닥·지형) 주소 앞머리. 빌드가 site.json seoul3d_assets 로 채움(GitHub Pages 등), 비면 같은 폴더
-const CITIES = {'':'서울', busan:'부산', daegu:'대구', incheon:'인천', gwangju:'광주', daejeon:'대전', ulsan:'울산'};   // 10-14 광역시 3D(자료는 c/<id>/, build_city3d.py)
+const CITIES = {'':'서울', busan:'부산', daegu:'대구', incheon:'인천', gwangju:'광주', daejeon:'대전', ulsan:'울산', yangpyeong:'양평', anseong:'안성', namyangju:'남양주', goyang:'고양', paju:'파주', gwangjugg:'경기 광주', uijeongbu:'의정부', cheonan:'천안', chuncheon:'춘천', jeonju:'전주', iksan:'익산', jinju:'진주'};   // 10-14 노포가 있는 시군도   // 10-14 광역시 3D(자료는 c/<id>/, build_city3d.py)
 const CITY = (new URLSearchParams(location.search).get('c') || '').replace(/[^a-z]/g, '');
 const A = p => ASSET_BASE + (CITY && CITIES[CITY] ? `c/${CITY}/` : '') + p;
 const CNAME = CITIES[CITY] || '서울';
@@ -347,22 +347,23 @@ let PLACES = PLACES_ALL.slice(), pins = [];
 const pinTex = new Map();
 function pinTexture(name){ if(pinTex.has(name)) return pinTex.get(name);
   const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256; const g = cv.getContext('2d');
-  g.font = '700 44px "Noto Sans KR",sans-serif'; const w = Math.min(480, g.measureText(name).width + 48);
-  rounded(g, 256 - w / 2, 10, w, 68, 34, 'rgba(255,255,255,.96)', 'rgba(0,0,0,.35)'); g.fillStyle = '#1a1a1a'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(name, 256, 46);
-  g.fillStyle = '#d7232f'; g.strokeStyle = '#fff'; g.lineWidth = 8; g.beginPath(); g.moveTo(256, 240); g.bezierCurveTo(200, 170, 196, 150, 196, 130); g.arc(256, 130, 60, Math.PI, 0); g.bezierCurveTo(316, 150, 312, 170, 256, 240); g.closePath(); g.fill(); g.stroke();
-  g.fillStyle = '#fff'; g.beginPath(); g.arc(256, 130, 22, 0, 7); g.fill();
+  let fs = 72; g.font = `800 ${fs}px "Noto Sans KR",sans-serif`; while(g.measureText(name).width > 440 && fs > 40){ fs -= 4; g.font = `800 ${fs}px "Noto Sans KR",sans-serif`; }
+  const w = Math.min(500, g.measureText(name).width + 56);
+  rounded(g, 256 - w / 2, 4, w, 100, 50, '#ffffff', '#1a1a1a'); g.fillStyle = '#111'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(name, 256, 56);   // 10-14 「너무 작아 건물과 구분 안 됨」
+  g.fillStyle = '#d7232f'; g.strokeStyle = '#fff'; g.lineWidth = 8; g.beginPath(); g.moveTo(256, 250); g.bezierCurveTo(210, 196, 206, 180, 206, 162); g.arc(256, 162, 50, Math.PI, 0); g.bezierCurveTo(306, 180, 302, 196, 256, 250); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle = '#fff'; g.beginPath(); g.arc(256, 162, 18, 0, 7); g.fill();
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; pinTex.set(name, t); return t; }
 function roofAt(x, y){ let top = hAt(x, y) + 8; const [tx, ty] = tileOf(x, y), t = tiles[`${tx}_${ty}`];
   if(t && t.state === 'ok'){ top = hAt(x, y); for(const b of t.bld){ if(Math.abs(b.x - x) < 22 && Math.abs(b.y - y) < 22) top = Math.max(top, b.base + b.h); } } return top; }
 function makePins(){
   for(const p of pins){ scene.remove(p); scene.remove(p.userData.stem); } pins = [];
   for(const p of PLACES){ const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:pinTexture(p.name), transparent:true, depthTest:false}));
-    const top = roofAt(p.x, p.y); sp.position.set(p.x, top + 34, -p.y); sp.renderOrder = 5;
-    const stem = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(p.x, hAt(p.x, p.y), -p.y), new THREE.Vector3(p.x, top + 20, -p.y)]), new THREE.LineBasicMaterial({color:'#d7232f', transparent:true, opacity:.8}));
+    const top = roofAt(p.x, p.y); sp.center.set(.5, 0); sp.position.set(p.x, top + 2, -p.y); sp.renderOrder = 5;
+    const stem = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(p.x, hAt(p.x, p.y), -p.y), new THREE.Vector3(p.x, top + 2, -p.y)]), new THREE.LineBasicMaterial({color:'#d7232f', transparent:true, opacity:.8}));
     sp.userData = {p, top, stem, big:false}; scene.add(sp, stem); pins.push(sp); }
   makeBubbles(); }
-function liftPins(){ for(const sp of pins){ const p = sp.userData.p, top = roofAt(p.x, p.y); if(Math.abs(top - sp.userData.top) < .5) continue; sp.userData.top = top; sp.position.y = top + 34;
-  const pos = sp.userData.stem.geometry.attributes.position; pos.setY(1, top + 20); pos.needsUpdate = true; } }
+function liftPins(){ for(const sp of pins){ const p = sp.userData.p, top = roofAt(p.x, p.y); if(Math.abs(top - sp.userData.top) < .5) continue; sp.userData.top = top; sp.position.y = top + 2;
+  const pos = sp.userData.stem.geometry.attributes.position; pos.setY(1, top + 2); pos.needsUpdate = true; } }
 
 // ---------- 상태·UI
 let level = null, curGu = null, curN = null;   // null: 첫 프레임에 머리말을 채운다
@@ -450,7 +451,7 @@ function frame(){ const dt = Math.min(.1, clock.getDelta()); tick++;
   if(tick % 10 === 0){ streamTiles(); updateState(); }
   const camD = camera.position.distanceTo(controls.target), alt = camera.position.y - hAt(camera.position.x, -camera.position.z);
   edgeMat.opacity = edgesOn ? Math.max(0, Math.min(.2, (2600 - camD) / 2000 * .2)) : 0;
-  for(const sp of pins){ const d = camera.position.distanceTo(sp.position), k = Math.max(26, Math.min(PLACES.length <= 40 ? 900 : 160, d * (PLACES.length <= 40 ? .075 : .055))) * (sp.userData.big ? 1.3 : 1); sp.scale.set(k, k / 2, 1); sp.visible = alt < 6000 || PLACES.length <= 40; }   // 노포가 적은 도시(부산·대전 등)는 첫 화면부터 핀을 보인다
+  for(const sp of pins){ const d = camera.position.distanceTo(sp.position), k = Math.max(40, Math.min(2400, d * .13)) * (sp.userData.big ? 1.25 : 1); sp.scale.set(k, k / 2, 1); sp.visible = alt < 6000 || PLACES.length <= 40; }   // 노포가 적은 도시(부산·대전 등)는 첫 화면부터 핀을 보인다
   for(const b of bubbles){ const d = camera.position.distanceTo(b.position), k = Math.max(300, Math.min(1400, d * .085)) * (b.userData.big ? 1.25 : 1); b.scale.set(k, k, 1); b.visible = alt > 2800; }
   for(const s of marks){ const d = camera.position.distanceTo(s.position); if(s.userData.kind === 'lm'){ s.visible = d < 12000 && alt > 150; const k = Math.max(120, Math.min(1400, d * .09)); s.scale.set(k, k / 2, 1); }
     else { s.visible = d < 2600; const k = Math.max(30, Math.min(220, d * .07)); s.scale.set(k, k, 1); } }
