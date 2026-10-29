@@ -38,12 +38,181 @@ button[hidden],a[hidden]{display:none}
 #tip{position:fixed;left:50%;bottom:52px;transform:translateX(-50%);z-index:3;background:rgba(18,15,11,.8);color:#fff;font-size:13px;padding:7px 14px;border-radius:999px;pointer-events:none;transition:opacity .4s}
 #tip.off{opacity:0}
 @media (max-width:640px){#foot{display:none}.list{max-height:22vh}h1{font-size:18px}}
+
+/* === Astra Spatial & Claude Fable Motion Engine === */
+:root {
+  --brass: #d4af37;
+  --brass-glow: rgba(212, 175, 55, 0.4);
+  --ember: #e63946;
+  --ember-glow: rgba(230, 57, 70, 0.45);
+  --ink: #14171f;
+  --text-pri: #14171f;
+  --text-sub: #5a6275;
+  --bg-glass: rgba(255, 253, 247, 0.88);
+  --border-glass: rgba(0, 0, 0, 0.1);
+  --border-shimmer: rgba(212, 175, 55, 0.4);
+  --shadow-ambient: 0 16px 40px -10px rgba(0, 0, 0, 0.18), 0 0 1px 1px rgba(255, 255, 255, 0.6) inset;
+  --chip-bg: rgba(240, 236, 226, 0.85);
+  --chip-active: #14171f;
+  --chip-active-text: #ffffff;
+}
+
+[data-theme="dusk"] {
+  --text-pri: #f5eedf;
+  --text-sub: #c4b59d;
+  --bg-glass: rgba(28, 20, 16, 0.84);
+  --border-glass: rgba(255, 176, 112, 0.22);
+  --border-shimmer: rgba(255, 176, 112, 0.5);
+  --shadow-ambient: 0 16px 40px -10px rgba(0, 0, 0, 0.45), 0 0 1px 1px rgba(255, 200, 140, 0.15) inset;
+  --chip-bg: rgba(56, 40, 32, 0.7);
+  --chip-active: #d4af37;
+  --chip-active-text: #1a120c;
+}
+
+[data-theme="night"] {
+  --text-pri: #eef3fc;
+  --text-sub: #94a3b8;
+  --bg-glass: rgba(11, 16, 27, 0.86);
+  --border-glass: rgba(148, 163, 184, 0.18);
+  --border-shimmer: rgba(56, 189, 248, 0.45);
+  --shadow-ambient: 0 16px 40px -10px rgba(0, 0, 0, 0.65), 0 0 1px 1px rgba(56, 189, 248, 0.2) inset;
+  --chip-bg: rgba(26, 36, 56, 0.75);
+  --chip-active: #38bdf8;
+  --chip-active-text: #0b101b;
+}
+
+/* Glass Panels */
+.card, #stat, #nav button, #tip, .glass-panel {
+  background: var(--bg-glass) !important;
+  backdrop-filter: blur(16px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+  border: 1px solid var(--border-glass) !important;
+  box-shadow: var(--shadow-ambient) !important;
+  color: var(--text-pri) !important;
+  transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease !important;
+}
+
+/* Vignette */
+.vignette-overlay {
+  position: fixed; inset: 0; pointer-events: none; z-index: 2;
+  box-shadow: inset 0 0 100px rgba(0,0,0,0.3);
+}
+
+/* Magnetic Cursor */
+#cursor-ring {
+  position: fixed; top: 0; left: 0; width: 32px; height: 32px; border-radius: 50%;
+  border: 1.5px solid var(--brass); pointer-events: none; z-index: 9999;
+  transform: translate(-50%, -50%);
+  transition: width 0.25s, height 0.25s, border-color 0.3s;
+  mix-blend-mode: difference;
+}
+#cursor-dot {
+  position: fixed; top: 0; left: 0; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--brass); pointer-events: none; z-index: 9999;
+  transform: translate(-50%, -50%);
+}
+body:hover #cursor-ring.hovered {
+  width: 52px; height: 52px; border-color: var(--ember);
+}
+
+/* District Ribbon */
+.district-ribbon {
+  display: flex; gap: 5px; overflow-x: auto; padding-block: 6px; margin-top: 8px;
+  scrollbar-width: none;
+}
+.district-ribbon::-webkit-scrollbar { display: none; }
+.district-pill {
+  flex: none; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  background: var(--chip-bg); border: 1px solid var(--border-glass); cursor: pointer;
+  white-space: nowrap; color: var(--text-pri); transition: all 0.2s;
+}
+.district-pill.active {
+  background: var(--chip-active); color: var(--chip-active-text); border-color: var(--chip-active);
+}
+
+/* Nopo List Item Upgrade */
+.list .li button {
+  font-weight: 600; display: flex; justify-content: space-between; align-items: center;
+  transition: transform 0.2s, background 0.2s;
+}
+.list .li button:hover {
+  transform: translateX(3px); background: rgba(255,255,255,0.9);
+}
+
+/* Detail Modal */
+#detail-modal {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(120%);
+  width: min(500px, calc(100vw - 32px)); z-index: 100; padding: 18px 22px; border-radius: 18px;
+  pointer-events: auto; opacity: 0; transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
+}
+#detail-modal.active {
+  transform: translateX(-50%) translateY(0); opacity: 1;
+}
+.modal-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.year-seal { font-size: 11px; font-weight: 700; color: #fff; background: linear-gradient(135deg, var(--brass), #a87922); padding: 2px 7px; border-radius: 999px; }
+.category-pill { font-size: 11px; color: var(--text-sub); background: var(--chip-bg); padding: 2px 7px; border-radius: 999px; border: 1px solid var(--border-glass); }
+.modal-title { font-size: 22px; font-weight: 800; margin: 0; }
+.modal-close { background: none; border: 1px solid var(--border-glass); width: 28px; height: 28px; border-radius: 50%; cursor: pointer; }
+.modal-desc { font-size: 13px; line-height: 1.5; color: var(--text-pri); margin: 6px 0 10px; }
+.modal-highlights { list-style: none; padding: 0; margin: 0 0 12px 0; font-size: 12px; color: var(--text-sub); }
+.modal-highlights li { display: flex; align-items: baseline; gap: 5px; margin-bottom: 2px; }
+.modal-highlights li::before { content: "◆"; font-size: 7px; color: var(--brass); }
+.modal-actions { display: flex; gap: 8px; }
+.modal-actions a, .modal-actions button { flex: 1; justify-content: center; text-align: center; padding: 8px 12px; border-radius: 999px; }
+
+/* Flight Telemetry HUD */
+#telemetry-hud {
+  position: fixed; left: 12px; bottom: 12px; z-index: 8; display: flex; gap: 12px;
+  padding: 6px 12px; border-radius: 10px; font: 600 11px/1.4 ui-monospace, monospace;
+}
+#stat { display: none !important; }
+
+/* Loading screen guarantee */
+#load[hidden] { display: none !important; }
+
 </style>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Noto+Sans+KR:wght@400;600;700;800&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
+
 </head>
 <body>
 <canvas id="c"></canvas>
 <div id="load"><div><b id="load-h">도시를 접는 중…</b><span id="load-t">지형과 바닥을 불러옵니다</span></div></div>
+
+<div class="vignette-overlay"></div>
+<div id="cursor-ring"></div>
+<div id="cursor-dot"></div>
+
+<!-- Floating Heritage Detail Modal -->
+<div id="detail-modal" class="glass-panel">
+  <div class="modal-header">
+    <div>
+      <div style="display:flex;gap:5px;align-items:center;margin-bottom:3px;">
+        <span class="year-seal" id="m-yr">1904년 창업</span>
+        <span class="category-pill" id="m-cat">전통 노포</span>
+        <span class="category-pill" id="m-gu">서울</span>
+      </div>
+      <h2 class="modal-title" id="m-name">가게 이름</h2>
+    </div>
+    <button class="modal-close" id="m-close" title="닫기">✕</button>
+  </div>
+  <p class="modal-desc" id="m-line">노포 이야기</p>
+  <ul class="modal-highlights" id="m-sub"></ul>
+  <div class="modal-actions">
+    <button class="red" id="m-fly-orbit">🚁 360° 선회 비행</button>
+    <a class="btn" id="m-map-link" target="_blank" rel="noopener">🗺️ 네이버 지도 ↗</a>
+  </div>
+</div>
+
+<!-- Telemetry HUD -->
+<div id="telemetry-hud" class="glass-panel">
+  <div><span style="opacity:0.6;font-size:9px;">ALTITUDE</span><br><b id="hud-alt">1,420 m</b></div>
+  <div style="border-left:1px solid var(--border-glass);padding-left:8px;"><span style="opacity:0.6;font-size:9px;">SPEED</span><br><b id="hud-spd">0 km/h</b></div>
+  <div style="border-left:1px solid var(--border-glass);padding-left:8px;"><span style="opacity:0.6;font-size:9px;">MODE</span><br><b id="hud-mode" style="color:var(--brass);">AUTOPILOT</b></div>
+</div>
+
 <div class="ui" id="top">
   <div class="card">
     <h1><span id="where">서울</span><small>종이 모형</small></h1>
@@ -52,11 +221,13 @@ button[hidden],a[hidden]{display:none}
       <button id="exit" hidden>← 전국 지도로</button>
       <button id="back" hidden>← 전체로</button>
       <select id="city" title="다른 도시 보기" style="border:1px solid rgba(0,0,0,.2);border-radius:999px;padding:6px 10px;font-size:13px;background:#fff"></select>
+      <button id="sound-toggle" title="음향 효과 토글">🔊</button>
       <button id="tour" class="red" hidden>🚁 둘러보기</button>
       <button id="edges" aria-pressed="true">윤곽선</button>
       <span style="display:inline-flex;gap:4px"><button data-m="day" aria-pressed="true">낮</button><button data-m="dusk">노을</button><button data-m="night">밤</button></span>
       <a class="btn" id="tomap" href="https://gaja.semicolon.works/nopo/">← 지도로</a>
     </div>
+    <div class="district-ribbon" id="district-ribbon"></div>
     <div class="list" id="list"></div>
   </div>
 </div>
@@ -122,6 +293,109 @@ const post = m => { if(EMBED) window.parent.postMessage(Object.assign({src:'seou
 if(EMBED){ $('#tomap').hidden = true; $('#exit').hidden = false; }
 $('#exit').onclick = () => post({t:'exit'});
 gsap.ticker.lagSmoothing(0);
+
+// ---------- Web Audio API 사운드 시스템
+class SonicEngine {
+  constructor() { this.ctx = null; this.enabled = true; }
+  init() {
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) this.ctx = new AudioCtx();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  }
+  whoosh() {
+    if (!this.enabled) return; this.init(); if (!this.ctx) return;
+    const now = this.ctx.currentTime, bufferSize = Math.floor(this.ctx.sampleRate * 0.7);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const noise = this.ctx.createBufferSource(); noise.buffer = buffer;
+    const filter = this.ctx.createBiquadFilter(); filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(160, now); filter.frequency.exponentialRampToValueAtTime(700, now + 0.3); filter.frequency.exponentialRampToValueAtTime(100, now + 0.7);
+    filter.Q.setValueAtTime(3.0, now);
+    const gain = this.ctx.createGain(); gain.gain.setValueAtTime(0.01, now); gain.gain.linearRampToValueAtTime(0.1, now + 0.2); gain.gain.linearRampToValueAtTime(0.001, now + 0.7);
+    noise.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+    noise.start(now);
+  }
+  click() {
+    if (!this.enabled) return; this.init(); if (!this.ctx) return;
+    const now = this.ctx.currentTime, osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+    osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now); osc.frequency.exponentialRampToValueAtTime(400, now + 0.04);
+    gain.gain.setValueAtTime(0.06, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+    osc.connect(gain); gain.connect(this.ctx.destination); osc.start(now); osc.stop(now + 0.04);
+  }
+  chime() {
+    if (!this.enabled) return; this.init(); if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    [523.25, 659.25, 783.99].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+      osc.type = 'triangle'; osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+      gain.gain.setValueAtTime(0.05, now + idx * 0.05); gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.25);
+      osc.connect(gain); gain.connect(this.ctx.destination); osc.start(now + idx * 0.05); osc.stop(now + idx * 0.05 + 0.25);
+    });
+  }
+}
+const sfx = new SonicEngine();
+const soundBtn = document.getElementById('sound-toggle');
+if(soundBtn) soundBtn.onclick = () => {
+  sfx.enabled = !sfx.enabled; soundBtn.textContent = sfx.enabled ? '🔊' : '🔇'; if(sfx.enabled) sfx.click();
+};
+
+// 마그네틱 커서
+const ring = document.getElementById('cursor-ring'), dot = document.getElementById('cursor-dot');
+let mx = innerWidth / 2, my = innerHeight / 2, rx = mx, ry = my;
+window.addEventListener('pointermove', e => { mx = e.clientX; my = e.clientY; if(dot) dot.style.transform = `translate(${mx}px, ${my}px)`; });
+function renderCursor() {
+  rx += (mx - rx) * 0.2; ry += (my - ry) * 0.2;
+  if(ring) ring.style.transform = `translate(${rx}px, ${ry}px)`;
+  requestAnimationFrame(renderCursor);
+}
+renderCursor();
+document.querySelectorAll('button, a, select, .district-pill').forEach(el => {
+  el.addEventListener('mouseenter', () => ring && ring.classList.add('hovered'));
+  el.addEventListener('mouseleave', () => ring && ring.classList.remove('hovered'));
+});
+
+// 비동기 노포 상세 데이터 로드
+let NOPO_DETAILS = {};
+fetch('nopo_details.json').then(r => r.json()).then(d => { NOPO_DETAILS = d; }).catch(() => {});
+
+// 구 리본 필터
+const DISTRICTS = ['전체', '종로구', '중구', '용산구', '마포구', '강남구', '서초구', '영등포구', '성북구', '동대문구', '서대문구', '광진구', '성동구', '송파구', '관악구', '강서구', '강북구'];
+function renderDistrictRibbon(curG){
+  const el = $('#district-ribbon'); if(!el) return;
+  el.innerHTML = DISTRICTS.map(d => `<div class="district-pill${d === (curG || '전체') ? ' active' : ''}" data-gu="${d}">${d}</div>`).join('');
+}
+renderDistrictRibbon('전체');
+if($('#district-ribbon')) $('#district-ribbon').onclick = e => {
+  const p = e.target.closest('.district-pill'); if(!p) return;
+  sfx.click(); const gu = p.dataset.gu;
+  if(gu === '전체') $('#back').onclick(); else flyToGu(gu);
+};
+
+// 노포 상세 모달
+let modalPlace = null;
+function showPlaceModal(n){
+  const p = PLACES_ALL.find(item => item.n === n); if(!p) return;
+  modalPlace = p;
+  const d = NOPO_DETAILS[n] || {};
+  const yrs = new Date().getFullYear() - (p.yr || 1970);
+  $('#m-name').textContent = p.name;
+  $('#m-yr').textContent = `${p.yr}년 창업 · ${yrs}년 역사`;
+  $('#m-cat').textContent = d.f || '한국 전통 노포';
+  $('#m-gu').textContent = p.gu || '서울';
+  $('#m-line').textContent = d.line || `${p.name}은(는) ${p.yr}년부터 본래의 맛과 손길을 이어 온 노포입니다.`;
+  const ul = $('#m-sub');
+  if(d.sub && d.sub.length) ul.innerHTML = d.sub.slice(0, 3).map(s => `<li>${s}</li>`).join('');
+  else ul.innerHTML = `<li>대를 이어온 고유의 조리법</li><li>오랜 단골과 함께한 세월의 공간</li>`;
+  $('#m-map-link').href = `https://map.naver.com/v5/search/${encodeURIComponent(p.name)}`;
+  $('#detail-modal').classList.add('active');
+  sfx.chime();
+}
+$('#m-close').onclick = () => { sfx.click(); $('#detail-modal').classList.remove('active'); };
+$('#m-fly-orbit').onclick = () => { if(modalPlace) orbitAroundPlace(modalPlace.n); };
+
 
 // ---------- 자료
 const loadDem = () => new Promise((ok, no) => { const im = new Image(); im.onload = () => { const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height;
@@ -374,7 +648,8 @@ function updateState(){ const t = controls.target, alt = camera.position.y - hAt
   $('#where').textContent = g ? CNAME + ' ' + g : CNAME; $('#count').textContent = !PLACES.length ? `아직 소개한 노포가 없어요 · 구 동그라미로 내려가 둘러볼 수 있어요` : g ? `노포 ${ps.length}곳 · 핀을 누르면 가까이 가서 이야기를 봐요` : `노포 ${PLACES.length}곳 · 구 동그라미를 누르면 내려가요`;
   $('#back').hidden = lv !== 'gu'; $('#tour').hidden = !ps.length || (lv !== 'gu' && PLACES.length > 40);
   $('#list').innerHTML = ps.sort((a, b) => a.yr - b.yr).map(p => `<div class="li"><button data-n="${p.n}" data-a="info">${p.name}<small>${p.yr}년부터</small></button><button data-n="${p.n}" data-a="fly" title="여기로 날아가기">🚁</button></div>`).join('');
-  post({t:'state', level:lv, gu:g, count:g ? ps.length : PLACES.length}); }
+  post({t:'state', level:lv, gu:g, count:g ? ps.length : PLACES.length});
+  renderDistrictRibbon(g); }
 $('#list').onclick = e => { const b = e.target.closest('button'); if(!b) return; if(b.dataset.a === 'fly') flyToPlace(+b.dataset.n, true); else post({t:'open', n:+b.dataset.n}); };
 const applyFilter = ns => { PLACES = ns ? PLACES_ALL.filter(p => ns.includes(p.n)) : PLACES_ALL.slice(); makePins(); level = null; updateState(); };
 
@@ -387,10 +662,29 @@ function stopAll(){ if(tl){ tl.kill(); tl = null; } if(touring){ touring = false
 const shot = (x, y, top, dist, hgt, br) => ({x:x - Math.sin(br) * dist, y:top + hgt, z:-y - Math.cos(br) * dist, tx:x, ty:top + 6, tz:-y});
 function prefetchAround(x, y){ const [cx, cy] = tileOf(x, y); const want = []; for(let dx = -1; dx <= 1; dx++) for(let dy = -1; dy <= 1; dy++){ const tx = cx + dx, ty = cy + dy; if(tx >= TX0 && tx <= TX1 && ty >= TY0 && ty <= TY1) want.push([Math.abs(dx) + Math.abs(dy), tx, ty]); }
   want.sort((a, b) => a[0] - b[0]); for(const [, tx, ty] of want) loadTile(tx, ty, true); }
-function flyToGu(k){ const g = META.gu.find(g => g.k === k); if(!g) return; stopAll(); snap(); controls.enabled = false; bearing -= .5; prefetchAround(g.c[0], g.c[1]);
+function flyToGu(k){
+  sfx.whoosh(); renderDistrictRibbon(k); const g = META.gu.find(g => g.k === k); if(!g) return; stopAll(); snap(); controls.enabled = false; bearing -= .5; prefetchAround(g.c[0], g.c[1]);
   const h = hAt(g.c[0], g.c[1]); tl = gsap.timeline({onUpdate:applyCam, onComplete:() => { controls.enabled = true; tl = null; }});
   tl.to(cam, {...shot(g.c[0], g.c[1], h, 2300, 1900, bearing), duration:3.2, ease:'power2.inOut'}); $('#tip').classList.add('off'); }
-function flyToPlace(n, open){ const p = PLACES_ALL.find(p => p.n === n); if(!p) return; stopAll(); snap(); controls.enabled = false; bearing -= .9; prefetchAround(p.x, p.y);
+
+function orbitAroundPlace(n){
+  const p = PLACES_ALL.find(p => p.n === n); if(!p) return;
+  stopAll(); snap(); controls.enabled = false; sfx.whoosh();
+  $('#hud-mode').textContent = `ORBIT: ${p.name}`;
+  const top = roofAt(p.x, p.y), dist = 160, hgt = 80;
+  tl = gsap.timeline({onUpdate:applyCam, onComplete:stopAll});
+  const obj = { angle: bearing };
+  tl.to(obj, {
+    angle: bearing + Math.PI * 2, duration: 8.0, ease: 'power1.inOut',
+    onUpdate: () => {
+      cam.x = p.x - Math.sin(obj.angle) * dist; cam.y = top + hgt; cam.z = -p.y - Math.cos(obj.angle) * dist;
+      cam.tx = p.x; cam.ty = top + 6; cam.tz = -p.y;
+    }
+  });
+}
+
+function flyToPlace(n, open){
+  sfx.whoosh(); if(open) showPlaceModal(n); const p = PLACES_ALL.find(p => p.n === n); if(!p) return; stopAll(); snap(); controls.enabled = false; bearing -= .9; prefetchAround(p.x, p.y);
   const far = Math.hypot(camera.position.x - p.x, -camera.position.z - p.y) > 2500; curN = n;
   pins.forEach(s => s.userData.big = s.userData.p.n === n);
   tl = gsap.timeline({onUpdate:applyCam, onComplete:() => { controls.enabled = true; tl = null; if(open) post({t:'open', n}); }});
@@ -427,7 +721,7 @@ const MODES = {
   dusk: {sky:['#f0a46a','#fbe3c0'], fog:'#f3d3b0', sun:['#ffb070', 1.9], hemi:['#ffd9b0','#6a5040', .6], ground:'#f2d2a8', night:0, exp:1.0, water:['#d9a070','#8a6a60']},
   night:{sky:['#0b1424','#2a3a55'], fog:'#1b2436', sun:['#8fa6c8', .4], hemi:['#5a72a0','#141a28', .9], ground:'#6a7488', night:1, exp:1.0, water:['#243a55','#141f33']},
 };
-function setMode(m){ const M = MODES[m];
+function setMode(m){ const M = MODES[m]; document.documentElement.setAttribute('data-theme', m); sfx.click();
   sky.material.uniforms.top.value.set(M.sky[0]); sky.material.uniforms.bottom.value.set(M.sky[1]); scene.fog.color.set(M.fog);
   sun.color.set(M.sun[0]); sun.intensity = M.sun[1]; hemi.color.set(M.hemi[0]); hemi.groundColor.set(M.hemi[1]); hemi.intensity = M.hemi[2];
   groundMat.color.set(groundMat.map ? M.ground : '#e9e4d6'); bldUni.uNight.value = M.night; renderer.toneMappingExposure = M.exp; waterUni.uCol.value.set(M.water[0]).convertSRGBToLinear(); waterUni.uDeep.value.set(M.water[1]).convertSRGBToLinear();
@@ -458,6 +752,13 @@ function frame(){ const dt = Math.min(.1, clock.getDelta()); tick++;
   for(const t of Object.values(tiles)){ if(t.state !== 'ok') continue; for(const s of t.labels){ const d = camera.position.distanceTo(s.position); s.visible = s.userData.kind === 'rn' ? d < 1500 : d < 800; const k = Math.max(24, Math.min(120, d * .075)); s.scale.set(k, k / 4, 1); } }
   const dd = camera.position.distanceTo(lastPos); spd = (touring || tl) ? spd * .8 + (dd / Math.max(dt, 1e-3)) * 3.6 * .2 : spd * .9; lastPos.copy(camera.position);
   $('#stat').textContent = `고도 ${Math.max(0, alt).toFixed(0)} m · 시속 ${spd.toFixed(0)} km` + (touring ? ' · 둘러보는 중' : '');
+  
+  if(tick % 3 === 0){
+    const hAlt = $('#hud-alt'), hSpd = $('#hud-spd');
+    if(hAlt) hAlt.textContent = `${Math.max(0, alt).toFixed(0)} m`;
+    if(hSpd) hSpd.textContent = `${spd.toFixed(0)} km/h`;
+  }
+
   controls.update(); renderer.render(scene, camera); requestAnimationFrame(frame); }
 $('#load').hidden = true; window.__seoul = {scene, camera, controls, pins, tiles, flyToPlace, flyToGu, applyFilter, blocksReady}; post({t:'ready'}); frame();
 </script>
