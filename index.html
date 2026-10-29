@@ -9,47 +9,39 @@
   cursor: pointer !important;
 }
 
-/* Top Navigation Bar (Clean Silent Nav) */
+/* Top Navigation Bar (Restored Original Bar) */
 .bar {
-  background: rgba(14, 11, 8, 0.92) !important;
-  backdrop-filter: blur(14px) !important;
-  border-bottom: 1px solid rgba(201, 163, 90, 0.35) !important;
-  padding: 10px 18px !important;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.75) !important;
-  z-index: 100 !important;
+  position: absolute !important;
+  z-index: 30 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  padding-block: calc(14px + env(safe-area-inset-top, 0px)) 0 !important;
+}
+.bar .wrap {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
 }
 .bar b {
   font-family: 'Gowun Batang', 'Noto Serif KR', serif !important;
-  font-size: 20px !important;
+  font-size: 19px !important;
   color: #ffd899 !important;
   letter-spacing: -0.5px !important;
   cursor: pointer !important;
 }
-.quick-nav {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  flex-wrap: wrap !important;
-}
-.quick-nav button {
-  background: rgba(45, 34, 22, 0.85) !important;
-  border: 1px solid rgba(201, 163, 90, 0.35) !important;
+.bar a {
+  color: #c9a35a !important;
+  text-decoration: none !important;
+  font-size: 13.5px !important;
+  padding: 6px 16px !important;
+  border: 1px solid rgba(201, 163, 90, 0.4) !important;
   border-radius: 20px !important;
-  padding: 5px 14px !important;
-  font-size: 13px !important;
-  color: #eedcc0 !important;
-  font-family: inherit !important;
-  cursor: pointer !important;
-  transition: all 0.25s ease !important;
+  background: rgba(22, 16, 11, 0.75) !important;
+  backdrop-filter: blur(8px) !important;
+  transition: all 0.2s ease !important;
 }
-.quick-nav button:hover {
-  background: #c9a35a !important;
-  color: #120f0b !important;
-  font-weight: 700 !important;
-  border-color: #c9a35a !important;
-  box-shadow: 0 0 12px rgba(201, 163, 90, 0.5) !important;
-}
-.quick-nav button.pri {
+.bar a:hover {
   background: #c9a35a !important;
   color: #120f0b !important;
   font-weight: 700 !important;
@@ -578,15 +570,9 @@ dialog::backdrop{background:rgba(8,6,4,.72)}
   </div>
 </div>
 <div class="plaques" id="plaques"></div></div>
-    <div class="bar"><div class="wrap" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-  <b onclick="teleportTo(0)" style="cursor:pointer;">🏮 노포 바이블 <span style="font-size:12px; font-weight:400; color:var(--brass); margin-left:6px;">百年의 記憶</span></b>
-  <div class="quick-nav">
-    <button type="button" onclick="teleportTo(0)">🏮 1. 골목길</button>
-    <button type="button" onclick="teleportTo(3.0)">🚪 2. 주막 홀</button>
-    <button type="button" onclick="teleportTo(5.0)">🔥 3. 연탄난로</button>
-    <button type="button" onclick="teleportTo(7.6)" class="pri">📜 4. 목찰 벽면</button>
-    <button type="button" onclick="teleportTo('find')">🗺️ 5. 노포 지도</button>
-  </div>
+    <div class="bar"><div class="wrap">
+  <b onclick="window.scrollTo({top:0, behavior:'smooth'})" style="cursor:pointer;">노포 바이블</b>
+  <a href="#find">지도 바로 가기</a>
 </div></div>
 
     <div class="cap" data-s="-1,0.55" data-side="l" style="opacity:1"><div class="wrap"><div class="cap-in">
@@ -1078,17 +1064,17 @@ sheet.onclick = e => { if(e.target===sheet) sheet.close(); };
     renderer.setSize(W, H, false); pUni.uScr.value = W/H;
     stripW = strip.scrollWidth - W + 32;
     S_END = WALL0 + .5 + Math.max(stripW, 0)/Math.max(W*.9, 600);   // 한 화면 내릴 때 목찰 띠가 화면 폭의 90%쯤 지나간다
-    story.style.height = `calc(${(S_END+1).toFixed(2)} * 100svh)`;
+    story.style.height = `calc(${((S_END*2)+2).toFixed(2)} * 100svh)`;
   }
   new ResizeObserver(() => { measure(); kick(); }).observe(stage); measure();
 
   /* ---- 누르기: 빈 곳이면 한 걸음 더 ---- */
   
-  /* ---- 비겹침 선명 장면 전진 엔진 (Clean, Non-Ghosting Scene Transitions - SILENT) ---- */
+  /* ---- 비겹침 선명 장면 전진 엔진 (절반 속도로 부드럽고 여유로운 전환) ---- */
   window.stepForward = function(clientX, clientY) {
     if (typeof createLanternRipple === 'function') createLanternRipple(clientX, clientY);
 
-    const curS = sS !== null ? sS : clamp(-story.getBoundingClientRect().top/H, 0, S_END);
+    const curS = sS !== null ? sS : clamp(-story.getBoundingClientRect().top/(H * 2.0), 0, S_END);
     
     // 앞뒤 장면이 겹치지 않는 선명한 씬 중심 체크포인트
     const checkpoints = [1.05, 1.95, 3.00, 4.00, 5.00, 6.00, 6.95, 7.60, S_END];
@@ -1101,21 +1087,29 @@ sheet.onclick = e => { if(e.target===sheet) sheet.close(); };
     }
     
     if (curS >= 7.5) {
-      scrollBy({ top: H * 0.85, behavior: 'smooth' });
+      if (typeof smoothScrollTo === 'function') {
+        smoothScrollTo(window.scrollY + H * 1.2, 1500);
+      } else {
+        scrollBy({ top: H * 0.85, behavior: 'smooth' });
+      }
     } else {
       const totalH = story.offsetHeight - H;
       const destY = (nextTarget / S_END) * totalH;
-      window.scrollTo({ top: destY, behavior: 'smooth' });
+      if (typeof smoothScrollTo === 'function') {
+        smoothScrollTo(destY, 1500);
+      } else {
+        window.scrollTo({ top: destY, behavior: 'smooth' });
+      }
     }
     
-    // 걸음 내딛을 때 카메라 스텝 펄스 킥
-    pUni.uFlash.value = Math.min(pUni.uFlash.value + 0.24, 0.48);
+    // 걸음 내딛을 때 카메라 스텝 펄스 (부드럽게 절반 완화)
+    pUni.uFlash.value = Math.min(pUni.uFlash.value + 0.12, 0.24);
     kick();
   };
 
   // stage 전체에 클릭 리스너 바인딩 (인터랙티브 컨트롤 제외)
   stage.addEventListener('click', e => {
-    if (e.target.closest('button, a, dialog, .plq, .hvid, #wall-filter-bar, .bar, .quick-nav, .stepper-dot, .chip, input')) {
+    if (e.target.closest('button, a, dialog, .plq, .hvid, #wall-filter-bar, .bar, .stepper-dot, .chip, input')) {
       return;
     }
     stepForward(e.clientX, e.clientY);
@@ -1123,7 +1117,7 @@ sheet.onclick = e => { if(e.target===sheet) sheet.close(); };
 
   // 모바일 터치 대응
   stage.addEventListener('touchend', e => {
-    if (e.target.closest('button, a, dialog, .plq, .hvid, #wall-filter-bar, .bar, .quick-nav, .stepper-dot, .chip, input')) {
+    if (e.target.closest('button, a, dialog, .plq, .hvid, #wall-filter-bar, .bar, .stepper-dot, .chip, input')) {
       return;
     }
     const touch = e.changedTouches ? e.changedTouches[0] : null;
@@ -1147,7 +1141,7 @@ sheet.onclick = e => { if(e.target===sheet) sheet.close(); };
     raf = 0;
     const dt = Math.min((now-t0)/1000, .05); t0 = now;
     if(!reduce) uTime.value += dt;
-    const s = clamp(-story.getBoundingClientRect().top/H, 0, S_END);
+    const s = clamp(-story.getBoundingClientRect().top/(H * 2.0), 0, S_END);
     sS = sS===null ? s : sS + (s-sS)*(1-Math.pow(.002, dt));
     vx += (px-vx)*.06; vy += (py-vy)*.06;
     $('#prog').style.transform = `scaleX(${(sS/S_END).toFixed(4)})`;
@@ -1199,11 +1193,39 @@ sheet.onclick = e => { if(e.target===sheet) sheet.close(); };
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"90dd7875574a44119454e55ff8802298","r":1,"spa":2}' crossorigin="anonymous"></script>
 
 <script>
-// --- Teleport Navigation ---
+// --- Smooth Lerp Scroller (Half Speed, Gentle Cinematic Pacing) ---
+let smoothScrollRaf = null;
+function smoothScrollTo(destY, duration = 1500) {
+  if (smoothScrollRaf) cancelAnimationFrame(smoothScrollRaf);
+  const startY = window.scrollY;
+  const diff = destY - startY;
+  if (Math.abs(diff) < 2) return;
+  const startTime = performance.now();
+  function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+  function step(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const ease = easeInOutCubic(progress);
+    window.scrollTo(0, startY + diff * ease);
+    if (progress < 1) {
+      smoothScrollRaf = requestAnimationFrame(step);
+    } else {
+      smoothScrollRaf = null;
+    }
+  }
+  smoothScrollRaf = requestAnimationFrame(step);
+}
+
+// --- Teleport Navigation (Smooth Half-Speed) ---
 function teleportTo(target) {
   if (target === 'find') {
     const el = document.getElementById('find');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
+    if (el) {
+      const topPos = el.getBoundingClientRect().top + window.scrollY - 40;
+      smoothScrollTo(topPos, 1400);
+    }
     return;
   }
   const story = document.getElementById('story');
@@ -1211,7 +1233,7 @@ function teleportTo(target) {
   const totalH = story.offsetHeight - window.innerHeight;
   const S_MAX = 8.5;
   const destY = (target / S_MAX) * totalH;
-  window.scrollTo({ top: destY, behavior: 'smooth' });
+  smoothScrollTo(destY, 1500);
 }
 
 // --- Lantern Light Ripple Animation Generator (Silent Visual Tactile Wave) ---
