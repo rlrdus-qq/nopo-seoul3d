@@ -706,8 +706,11 @@ const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(); let downAt = null;
 canvas.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
 canvas.addEventListener('pointerup', e => { if(!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) return;
   ptr.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ptr, camera);
-  const hp = ray.intersectObjects(pins, false)[0]; if(hp) return flyToPlace(hp.object.userData.p.n, true);
-  const hb = ray.intersectObjects(bubbles, false)[0]; if(hb) return flyToGu(hb.object.userData.gu); });
+  // 1단계(서울 전체): 구 동그라미 우선 -> 구 전체를 보여준다. 2단계(구 안): 핀 -> 그 노포로 이동.
+  const hb = ray.intersectObjects(bubbles, false)[0], hp = ray.intersectObjects(pins, false)[0];
+  if(level === 'seoul' && PLACES.length > 40){ if(hb) return flyToGu(hb.object.userData.gu); return; }
+  if(hp) return flyToPlace(hp.object.userData.p.n, true);
+  if(hb) return flyToGu(hb.object.userData.gu); });
 $('#nav').onclick = e => { const b = e.target.closest('button'); if(!b) return; stopAll(); const a = b.dataset.a, d = camera.position.distanceTo(controls.target), step = d * .25;
   const f = new THREE.Vector3().subVectors(controls.target, camera.position); f.y = 0; f.normalize(); const r = new THREE.Vector3(-f.z, 0, f.x); const mv = v => { camera.position.add(v); controls.target.add(v); };
   if(a === 'up') mv(f.multiplyScalar(step)); else if(a === 'down') mv(f.multiplyScalar(-step)); else if(a === 'left') mv(r.multiplyScalar(-step)); else if(a === 'right') mv(r.multiplyScalar(step));
