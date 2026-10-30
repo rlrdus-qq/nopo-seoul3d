@@ -299,111 +299,63 @@
 
 
 <!-- =========================================================================
-     NOPO BIBLE MARKETING, AD MANAGER & ANALYTICS INFRASTRUCTURE
-     Integrated: Google Ads, GA4, Meta Pixel, Naver SearchAd/GFA, Kakao Moment
-     SEO/AEO: JSON-LD Structured Data & Search Engine Site Verification
+     ADVERTISER: 노포 바이블 (Nopo Bible) — gaja.semicolon.works/nopo/
+     ※ 워싱턴스쿨(Washington School)과 별도 광고주 · 별도 계정/픽셀로 관리
+     실제 계정 ID가 입력된 매체만 SDK를 로드합니다(빈 값이면 호출 안 함).
      ========================================================================= -->
-<!-- Search Engine & Ad Manager Site Verifications -->
-<meta name="naver-site-verification" content="f82a9d20c327290bc5e8557b6f634125b20678d2">
-<meta name="google-site-verification" content="google4b9e289c8a9139ef">
-<meta name="facebook-domain-verification" content="nopo_meta_domain_verify">
-
-<!-- Integrated Marketing & Ad Manager Event Dispatcher -->
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-
   window.NOPO_MARKETING = {
-    ga_id: window.ENV_GA_ID || 'G-NOPOBIBLE01',
-    google_ads_id: window.ENV_GADS_ID || 'AW-NOPOBIBLE01',
-    meta_pixel_id: window.ENV_META_PIXEL_ID || '123456789012345',
-    naver_wcs_id: window.ENV_NAVER_WCS_ID || 's_1234567890ab',
-    kakao_pixel_id: window.ENV_KAKAO_PIXEL_ID || '123456789012345678',
-    is_live: true
+    advertiser: 'NOPO_BIBLE',
+    advertiser_label: '노포 바이블',
+    separate_from: 'WASHINGTON_SCHOOL',
+    ga_id: '',            // GA4 측정 ID (G-XXXXXXXXXX) — 노포 바이블 전용 속성
+    google_ads_id: '',    // Google Ads 전환 ID (AW-XXXXXXXXXX) — 노포 바이블 전용 계정
+    meta_pixel_id: '',    // Meta 픽셀 ID — 노포 바이블 전용 픽셀
+    naver_wcs_id: '',     // 네이버 공통 인증키 — 노포 바이블 전용 광고주
+    kakao_pixel_id: ''    // 카카오 픽셀 ID — 노포 바이블 전용 광고계정
   };
-
-  // Google Analytics 4 & Google Ads Initialization
-  gtag('js', new Date());
-  gtag('config', window.NOPO_MARKETING.ga_id, {
-    send_page_view: true,
-    page_title: '노포 바이블 - 백년의 기억',
-    page_location: window.location.href
-  });
-  if (window.NOPO_MARKETING.google_ads_id) {
-    gtag('config', window.NOPO_MARKETING.google_ads_id);
-  }
-
-  // Meta Pixel Initialization
-  !function(f,b,e,v,n,t,s)
-  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-  n.queue=[];t=b.createElement(e);t.async=!0;
-  t.src=v;s=b.getElementsByTagName(e)[0];
-  s.parentNode.insertBefore(t,s)}(window, document,'script',
-  'https://connect.facebook.net/en_US/fbevents.js');
-  fbq('init', window.NOPO_MARKETING.meta_pixel_id);
-  fbq('track', 'PageView');
-
-  // Naver Common Inflow & Conversion Log
-  if (!window.wcs_add) window.wcs_add = {};
-  window.wcs_add["wa"] = window.NOPO_MARKETING.naver_wcs_id;
-
-  // Unified Multi-Channel Marketing Event Tracker
-  window.trackNopoEvent = function(eventName, params) {
-    params = params || {};
-    try {
-      if (typeof gtag === 'function') {
-        gtag('event', eventName, params);
-      }
-      if (typeof fbq === 'function') {
-        fbq('trackCustom', eventName, params);
-      }
-      if (typeof wcs_do === 'function') {
-        window.wcs_do();
-      }
-      if (window.kakaoPixel) {
-        kakaoPixel(window.NOPO_MARKETING.kakao_pixel_id).customEvent(eventName);
-      }
-      if (window.location.hostname === 'localhost' || window.location.protocol === 'file:') {
-        console.log('[Ad/Marketing Event]', eventName, params);
-      }
-    } catch(e) {
-      console.warn('[Tracking Error]', e);
+  (function(M){
+    function load(src){ var t=document.createElement('script'); t.async=true; t.src=src; document.head.appendChild(t); return t; }
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function(){ dataLayer.push(arguments); };
+    if (M.ga_id || M.google_ads_id) {
+      load('https://www.googletagmanager.com/gtag/js?id=' + (M.ga_id || M.google_ads_id));
+      gtag('js', new Date());
+      if (M.ga_id) gtag('config', M.ga_id, { advertiser: M.advertiser });
+      if (M.google_ads_id) gtag('config', M.google_ads_id);
     }
+    if (M.meta_pixel_id) {
+      !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+      fbq('init', M.meta_pixel_id); fbq('track', 'PageView');
+    }
+    if (M.naver_wcs_id) {
+      window.wcs_add = window.wcs_add || {}; window.wcs_add.wa = M.naver_wcs_id;
+      load('https://wcs.naver.net/wcslog.js').onload = function(){ if (window.wcs_do) wcs_do(); };
+    }
+    if (M.kakao_pixel_id) {
+      load('https://t1.daumcdn.net/kas/static/kp.js').onload = function(){ if (window.kakaoPixel) kakaoPixel(M.kakao_pixel_id).pageView(); };
+    }
+  })(window.NOPO_MARKETING);
+
+  window.trackNopoEvent = function(name, params){
+    var M = window.NOPO_MARKETING; params = Object.assign({ advertiser: M.advertiser }, params || {});
+    try {
+      if ((M.ga_id || M.google_ads_id) && window.gtag) gtag('event', name, params);
+      if (M.meta_pixel_id && window.fbq) fbq('trackCustom', name, params);
+      if (M.kakao_pixel_id && window.kakaoPixel) kakaoPixel(M.kakao_pixel_id).customEvent(name);
+    } catch(e) {}
   };
 </script>
 
-<!-- Asynchronous SDK Loaders -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-NOPOBIBLE01"></script>
-<script async src="https://wcs.naver.net/wcslog.js"></script>
-<script type="text/javascript" charset="UTF-8" src="//t1.daumcdn.net/kas/static/kp.js"></script>
-
-<!-- JSON-LD SEO/AEO/GEO Structured Data -->
+<!-- JSON-LD SEO/AEO Structured Data -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@graph": [
-    {
-      "@type": "WebSite",
-      "@id": "https://gaja.semicolon.works/nopo/#website",
-      "url": "https://gaja.semicolon.works/nopo/",
-      "name": "노포 바이블 - 백년의 기억",
-      "description": "반세기를 버텨온 서울과 전국 183개 백년 노포의 맛과 이야기를 3D 인터랙티브와 실사 영상으로 기록한 살아있는 미식 문화유산 아카이브",
-      "inLanguage": "ko-KR",
-      "publisher": {
-        "@type": "Organization",
-        "name": "가자 (GAJA)",
-        "url": "https://gaja.semicolon.works"
-      }
-    },
-    {
-      "@type": "ItemList",
-      "@id": "https://gaja.semicolon.works/nopo/#places",
-      "name": "대한민국 대표 백년 노포 183선",
-      "description": "이문설농탕(1904), 하연옥(1945), 청진옥(1937) 등 전국 183개 백년가게 및 전통 맛집 컬렉션",
-      "numberOfItems": 183
-    }
+    {"@type": "WebSite", "@id": "https://gaja.semicolon.works/nopo/#website",
+     "url": "https://gaja.semicolon.works/nopo/", "name": "노포 바이블", "inLanguage": "ko-KR"},
+    {"@type": "ItemList", "@id": "https://gaja.semicolon.works/nopo/#places",
+     "name": "직접 다녀온 노포 183곳", "numberOfItems": 183}
   ]
 }
 </script>
